@@ -1,25 +1,45 @@
-import { VaultCard, VaultForm, VaultHeader, VaultItemCard, VaultItemForm } from '@/components/vault';
+import { 
+  VaultCard, 
+  VaultHeader, 
+  AddVault, 
+  AddItem, 
+  EditVault, 
+  EditItem, 
+  ViewItem, 
+  VaultItemCard
+} from '@/components/vault';
 import { useVault } from '@/contexts/VaultContext';
 import { Vault, VaultCategory, VaultItem } from '@/types/vault';
+import { useTheme } from '@/contexts/ThemeContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useCallback, useState } from 'react';
 import { Alert, Modal, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function VaultsScreen() {
+  const { theme } = useTheme();
   const { 
     vaults, 
     createVault,
     selectVault,
     updateVault,
     refreshVaults,
-    isRefreshing
+    loading: isRefreshing,
+    deleteItem,
+    currentVault
   } = useVault();
   
-  const [isCreateVaultModalVisible, setIsCreateVaultModalVisible] = useState(false);
-  const [isCreateItemModalVisible, setIsCreateItemModalVisible] = useState(false);
+  const handleBackToVaults = useCallback(() => {
+    // Reset both local state and context
+    setSelectedVault(null);
+    selectVault(null);
+  }, [selectVault]);
+  
   const [selectedVault, setSelectedVault] = useState<Vault | null>(null);
   const [selectedItem, setSelectedItem] = useState<VaultItem | null>(null);
+  const [viewingItem, setViewingItem] = useState<VaultItem | null>(null);
+  const [isCreateVaultModalVisible, setIsCreateVaultModalVisible] = useState(false);
+  const [isCreateItemModalVisible, setIsCreateItemModalVisible] = useState(false);
   
   const handleCreateVault = useCallback(async (vaultData: { name: string; category: VaultCategory; description?: string }) => {
     try {
@@ -32,7 +52,9 @@ export default function VaultsScreen() {
   }, [createVault]);
   
   const handleSelectVault = useCallback((vault: Vault) => {
+    // First set the selected vault in local state
     setSelectedVault(vault);
+    // Then update the context with the selected vault ID
     selectVault(vault.id);
   }, [selectVault]);
   
@@ -47,37 +69,53 @@ export default function VaultsScreen() {
     setSelectedItem(null);
     setIsCreateItemModalVisible(true);
   }, []);
-
+  
   const handleEditItem = useCallback((item: VaultItem) => {
     setSelectedItem(item);
     setIsCreateItemModalVisible(true);
+    setViewingItem(null);
+  }, []);
+
+  const handleSelectItem = useCallback((item: VaultItem) => {
+    setViewingItem(item);
+  }, []);
+
+  const handleCloseViewItem = useCallback(() => {
+    setViewingItem(null);
   }, []);
 
   const { addItem, updateItem } = useVault();
 
-  const handleSubmitItem = useCallback(async (itemData: any) => {
-    if (!selectedVault) return;
-    
+  const handleSubmitItem = useCallback(async (itemData: Partial<VaultItem>) => {
     try {
       if (selectedItem) {
         // Update existing item
-        await updateItem(selectedItem.id, {
-          title: itemData.title,
-          type: itemData.type,
-          metadata: itemData.metadata,
+        await updateVault(selectedVault?.id || '', {
+          items: selectedVault?.items.map(item => 
+            item.id === selectedItem.id ? { ...item, ...itemData } : item
+          ) || []
         });
-      } else {
+      } else if (selectedVault) {
         // Add new item
-        await addItem({
-          title: itemData.title,
-          type: itemData.type,
-          metadata: itemData.metadata,
-          isEncrypted: true,
+        const newItem: VaultItem = {
+          id: `item-${Date.now()}`,
+          type: itemData.type || 'note',
+          title: itemData.title || 'Untitled',
+          metadata: itemData.metadata || {},
+          isEncrypted: false,
+          encryptedFields: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        await updateVault(selectedVault.id, {
+          items: [...(selectedVault.items || []), newItem]
         });
       }
-
+      
       setIsCreateItemModalVisible(false);
       setSelectedItem(null);
+      await refreshVaults();
     } catch (error) {
       console.error('Failed to save item:', error);
       Alert.alert('Error', 'Failed to save item. Please try again.');
@@ -106,50 +144,50 @@ export default function VaultsScreen() {
   }, [refreshVaults]);
   
   const renderVaultList = () => (
-    <ScrollView 
-      style={styles.container}
-      refreshControl={
-        <RefreshControl 
-          refreshing={isRefreshing} 
-          onRefresh={handleRefresh} 
-        />
-      }>
-        <View style={styles.header}>
-          <Text style={styles.title}>My Vaults</Text>
-          <TouchableOpacity 
-            style={styles.addButton}
-            onPress={() => setIsCreateVaultModalVisible(true)}
-          >
-            <MaterialIcons name="add" size={24} color="#333" />
-          </TouchableOpacity>
-        </View>
-        
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Vaults</Text>
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={() => setIsCreateVaultModalVisible(true)}
+        >
+          <Text style={styles.addButtonText}>+</Text>
+        </TouchableOpacity>
+      </View>
+      
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl 
+            refreshing={isRefreshing} 
+            onRefresh={handleRefresh} 
+            colors={['#000000']}
+            tintColor="#000000"
+          />
+        }>
         {vaults.length === 0 ? (
           <View style={styles.emptyState}>
-            <MaterialIcons name="folder-special" size={48} color="#666" />
+            <MaterialIcons name="folder-special" size={48} color="#999" />
             <Text style={styles.emptyStateText}>No vaults yet</Text>
             <Text style={styles.emptyStateSubtext}>
               Create your first vault to start securing your digital legacy
             </Text>
-            <TouchableOpacity 
-              style={styles.primaryButton}
-              onPress={() => setIsCreateVaultModalVisible(true)}
-            >
-              <Text style={styles.primaryButtonText}>Create Vault</Text>
-            </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.vaultsGrid}>
+          <View style={styles.vaultsList}>
             {vaults.map((vault) => (
-              <VaultCard
-                key={vault.id}
-                vault={vault}
-                onPress={() => handleSelectVault(vault)}
-              />
+              <View key={vault.id} style={styles.vaultCardWrapper}>
+                <VaultCard
+                  vault={vault}
+                  onPress={() => handleSelectVault(vault)}
+                />
+              </View>
             ))}
           </View>
         )}
       </ScrollView>
+    </View>
   );
   
   const renderVaultDetail = () => {
@@ -159,9 +197,13 @@ export default function VaultsScreen() {
       <View style={styles.container}>
         <VaultHeader 
           vault={selectedVault} 
-          onBack={() => setSelectedVault(null)}
+          onBack={handleBackToVaults}
           onLock={handleLockVault}
           onAddItem={handleAddItem}
+          onEdit={() => {
+            setSelectedVault(selectedVault);
+            setIsCreateVaultModalVisible(true);
+          }}
         />
         
         <ScrollView style={styles.vaultContent}>
@@ -182,20 +224,12 @@ export default function VaultsScreen() {
           ) : (
             <View style={styles.itemsList}>
               {selectedVault.items.map((item) => (
-                <VaultItemCard
+                <VaultItemCard 
                   key={item.id}
                   item={item}
-                  onPress={() => handleEditItem(item)}
-                  onLongPress={() => {
-                    Alert.alert(
-                      'Delete Item',
-                      'Are you sure you want to delete this item?',
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Delete', style: 'destructive', onPress: () => handleDeleteItem(item.id) },
-                      ]
-                    );
-                  }}
+                  onPress={() => handleSelectItem(item)}
+                  onEdit={() => handleEditItem(item)}
+                  onDelete={() => handleDeleteItem(item.id)}
                 />
               ))}
             </View>
@@ -212,41 +246,80 @@ export default function VaultsScreen() {
       <Modal
         visible={isCreateVaultModalVisible}
         animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setIsCreateVaultModalVisible(false)}
+        onRequestClose={() => {
+          setIsCreateVaultModalVisible(false);
+          setSelectedVault(null);
+        }}
       >
-        <View style={styles.modalContainer}>
-          <VaultForm
-            initialData={{
-              name: '',
-              description: '',
-              category: 'share_after_death'
+        {selectedVault ? (
+          <EditVault 
+            vault={selectedVault}
+            onSave={handleCreateVault}
+            onCancel={() => {
+              setIsCreateVaultModalVisible(false);
+              setSelectedVault(null);
             }}
-            onSubmit={handleCreateVault}
+          />
+        ) : (
+          <AddVault 
+            onSave={handleCreateVault}
             onCancel={() => setIsCreateVaultModalVisible(false)}
           />
-        </View>
+        )}
       </Modal>
 
       <Modal
         visible={isCreateItemModalVisible}
         animationType="slide"
-        presentationStyle="pageSheet"
         onRequestClose={() => {
           setIsCreateItemModalVisible(false);
           setSelectedItem(null);
         }}
       >
-        <View style={styles.modalContainer}>
-          <VaultItemForm
-            initialData={selectedItem || undefined}
-            onSubmit={handleSubmitItem}
+        {selectedItem ? (
+          <EditItem 
+            item={selectedItem}
+            onSave={handleSubmitItem}
             onCancel={() => {
               setIsCreateItemModalVisible(false);
               setSelectedItem(null);
             }}
           />
-        </View>
+        ) : (
+          <AddItem 
+            onSave={handleSubmitItem}
+            onCancel={() => setIsCreateItemModalVisible(false)}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        visible={!!viewingItem}
+        animationType="slide"
+        onRequestClose={handleCloseViewItem}
+      >
+        {viewingItem && (
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={handleCloseViewItem}>
+                <MaterialIcons name="close" size={24} color="#000" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => {
+                handleEditItem(viewingItem);
+                setViewingItem(null);
+              }}>
+                <Text style={styles.editButton}>Edit</Text>
+              </TouchableOpacity>
+            </View>
+            <ViewItem 
+              item={viewingItem} 
+              onEdit={() => {
+                handleEditItem(viewingItem);
+                setViewingItem(null);
+              }} 
+            />
+          </View>
+        )}
       </Modal>
     </SafeAreaView>
   );
@@ -260,15 +333,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+    backgroundColor: 'white',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 24,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    padding: 16,
+    backgroundColor: 'white',
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: 'black',
   },
   addButton: {
@@ -278,24 +360,45 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  addButtonText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: '600',
+    lineHeight: 32,
+    marginTop: -2,
+  },
+  vaultsList: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  vaultCardWrapper: {
+    marginBottom: 8,
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 40,
     marginTop: 60,
   },
   emptyStateText: {
     fontSize: 18,
     fontWeight: '600',
+    color: 'black',
     marginTop: 16,
     marginBottom: 8,
-    color: 'black',
+    textAlign: 'center',
   },
   emptyStateSubtext: {
     fontSize: 14,
     color: 'rgba(0, 0, 0, 0.7)',
+    marginTop: 8,
     textAlign: 'center',
     marginBottom: 24,
   },
@@ -334,7 +437,20 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
     padding: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  editButton: {
+    color: '#007AFF',
+    fontSize: 17,
+    fontWeight: '600',
   },
 });

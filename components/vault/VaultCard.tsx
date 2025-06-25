@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Vault, VaultCategory } from '@/types/vault';
-
+import { MaterialIcons } from '@expo/vector-icons';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type VaultCardProps = {
   vault: Vault;
@@ -24,55 +24,68 @@ const categoryLabels: Record<VaultCategory, string> = {
   sign_off_after_death: 'Sign Off After Death',
 };
 
-export const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress, isSelected = false }) => {
-  // Using light theme with white background and black text
-  const itemCount = vault.items.length;
-  const iconName = vault.icon || categoryIcons[vault.category] || 'lock';
+const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress, isSelected = false }) => {
+  const { colors: themeColors } = useTheme();
   
+  // Use consistent colors matching the heirs page design
+  const colors = {
+    card: '#ffffff',
+    primary: '#000000',
+    border: '#f0f0f0',
+    text: '#000000',
+    textSecondary: '#666666',
+  };
+  
+  const itemCount = vault.items?.length || 0;
+  const iconName = vault.icon || categoryIcons[vault.category] || 'lock';
+  const label = vault.name || categoryLabels[vault.category] || 'Vault';
+
   return (
     <TouchableOpacity 
       style={[
         styles.container, 
-        isSelected && styles.selectedContainer
-      ]} 
+        { 
+          backgroundColor: colors.card,
+          borderColor: isSelected ? colors.primary : colors.border,
+          borderWidth: 1,
+          borderRadius: 8,
+          marginBottom: 8,
+        }
+      ]}
       onPress={onPress}
       activeOpacity={0.8}
     >
       <View style={styles.iconContainer}>
         <MaterialIcons 
           name={iconName as any} 
-          size={24} 
-          color="black"
+          size={20} 
+          color={isSelected ? colors.primary : colors.text}
         />
       </View>
-      
       <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
-          {vault.name}
+        <Text 
+          style={[
+            styles.title, 
+            { 
+              color: colors.text,
+              fontWeight: '500',
+              fontSize: 16,
+            }
+          ]}
+          numberOfLines={1}
+        >
+          {label}
         </Text>
-        <Text style={styles.category}>
-          {categoryLabels[vault.category] || 'Vault'}
-        </Text>
-        <Text style={styles.itemCount}>
+        <Text style={[styles.itemCount, { color: colors.textSecondary, fontSize: 14 }]}>
           {itemCount} {itemCount === 1 ? 'item' : 'items'}
         </Text>
       </View>
-      
-      <View style={styles.statusContainer}>
-        {vault.isLocked && (
-          <MaterialIcons 
-            name="lock" 
-            size={20} 
-            color="rgba(0, 0, 0, 0.5)"
-            style={styles.lockIcon} 
-          />
-        )}
-        <MaterialIcons 
-          name="chevron-right" 
-          size={24} 
-          color="rgba(0, 0, 0, 0.5)"
-        />
-      </View>
+      <MaterialIcons 
+        name="chevron-right" 
+        size={20} 
+        color={colors.textSecondary}
+        style={styles.chevron}
+      />
     </TouchableOpacity>
   );
 };
@@ -81,50 +94,36 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
+    borderRadius: 12,
     backgroundColor: 'white',
-    borderColor: '#e0e0e0',
-  },
-  selectedContainer: {
     borderWidth: 1,
-    borderColor: 'black',
-    backgroundColor: '#f5f5f5',
+    borderColor: '#f0f0f0',
+    width: '100%',
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    marginRight: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
-    backgroundColor: '#f5f5f5',
   },
   content: {
     flex: 1,
   },
   title: {
     fontSize: 16,
-    fontWeight: '600',
     marginBottom: 2,
-    color: 'black',
-  },
-  category: {
-    fontSize: 13,
-    marginBottom: 2,
-    color: 'rgba(0, 0, 0, 0.7)',
   },
   itemCount: {
-    fontSize: 12,
-    color: 'rgba(0, 0, 0, 0.7)',
+    fontSize: 14,
   },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  lockIcon: {
-    marginRight: 8,
+  chevron: {
+    marginLeft: 8,
   },
 });
+
+export { VaultCard };
+export default VaultCard;

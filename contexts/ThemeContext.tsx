@@ -28,6 +28,9 @@ export type ThemeColors = {
   gray700: string;
   gray800: string;
   gray900: string;
+  
+  // Additional colors
+  muted: string;
 };
 
 export type ThemeType = {
@@ -48,6 +51,7 @@ const lightColors: ThemeColors = {
   card: '#FFFFFF',
   text: '#000000',
   textSecondary: '#666666',
+  muted: '#6B7280',
   border: '#E5E5EA',
   notification: '#FF3B30',
   success: '#34C759',
@@ -71,7 +75,8 @@ const darkColors: ThemeColors = {
   background: '#000000',
   card: '#1C1C1E',
   text: '#FFFFFF',
-  textSecondary: '#8E8E93',
+  textSecondary: '#A1A1AA',
+  muted: '#9CA3AF',
   border: '#2C2C2E',
   gray50: '#1C1C1E',
   gray100: '#2C2C2E',

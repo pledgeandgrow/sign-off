@@ -76,8 +76,8 @@ export const ProfileMenuItem: React.FC<ProfileMenuItemProps> = ({
         style={[
           styles.container,
           { 
-            backgroundColor: theme.colors.card,
-            borderBottomColor: theme.colors.border,
+            backgroundColor: '#ffffff',
+            borderBottomColor: '#f0f0f0',
           },
           containerStyle,
         ]}
@@ -93,24 +93,26 @@ export const ProfileMenuItem: React.FC<ProfileMenuItemProps> = ({
             style={[
               styles.iconContainer, 
               { 
-                backgroundColor: `${iconColor || theme.colors.primary}15`,
+                backgroundColor: '#000000',
                 borderRadius: 8,
               }
             ]}
           >
             <MaterialIcons 
               name={icon as any} 
-              size={20} 
-              color={iconColor || theme.colors.primary} 
+              size={22} 
+              color="#ffffff"
+              style={{ opacity: 0.9 }}
             />
           </View>
           <Text 
             style={[
               styles.label, 
-              { color: theme.colors.text },
-              labelStyle,
+              { color: '#000000' },
+              labelStyle
             ]}
             numberOfLines={1}
+            ellipsizeMode="tail"
           >
             {label}
           </Text>

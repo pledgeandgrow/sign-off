@@ -2,11 +2,15 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { VaultItem, VaultItemType } from '@/types/vault';
+import { useTheme } from '@/contexts/ThemeContext';
+import { MaterialIcons as Icons } from '@expo/vector-icons';
 
 
 type VaultItemCardProps = {
   item: VaultItem;
   onPress: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   onLongPress?: () => void;
   isSelected?: boolean;
 };
@@ -26,49 +30,49 @@ export const VaultItemCard: React.FC<VaultItemCardProps> = ({
   item, 
   onPress, 
   onLongPress,
+  onEdit,
+  onDelete,
   isSelected = false,
 }) => {
+  const { theme } = useTheme();
   const iconName = itemIcons[item.type] || 'more-horiz';
-  // Using light theme with white background and black text
   
   return (
     <TouchableOpacity 
       style={[
         styles.container,
-        isSelected && styles.selectedContainer,
-      ]}
+        { 
+          backgroundColor: '#ffffff',
+          borderColor: isSelected ? '#000000' : '#f0f0f0',
+          borderWidth: 1,
+          borderRadius: 8,
+          marginBottom: 8,
+        }
+      ]} 
       onPress={onPress}
       onLongPress={onLongPress}
-      activeOpacity={0.7}
+      activeOpacity={0.8}
     >
-      <View style={[
-        styles.iconContainer,
-        isSelected && styles.selectedIconContainer,
-      ]}>
-        <MaterialIcons 
-          name={iconName as any} 
+      <View style={styles.iconContainer}>
+        <Icons 
+          name={iconName as keyof typeof Icons.glyphMap} 
           size={20} 
-          color={isSelected ? 'white' : 'black'} 
+          color={isSelected ? '#000000' : '#666666'}
         />
       </View>
       
       <View style={styles.content}>
         <Text 
-          style={[
-            styles.title,
-            isSelected && styles.selectedText,
-          ]} 
+          style={styles.title} 
           numberOfLines={1} 
           ellipsizeMode="tail"
         >
           {item.title}
         </Text>
         <Text 
-          style={[
-            styles.subtitle,
-            isSelected && styles.selectedSubtext,
-          ]} 
-          numberOfLines={1}
+          style={styles.subtitle} 
+          numberOfLines={1} 
+          ellipsizeMode="tail"
         >
           {getItemSubtitle(item)}
         </Text>
@@ -76,7 +80,7 @@ export const VaultItemCard: React.FC<VaultItemCardProps> = ({
       
       {item.isEncrypted && (
         <View style={styles.actions}>
-          <MaterialIcons name="lock" size={16} color="rgba(0, 0, 0, 0.5)" />
+          <Icons name="lock" size={16} color="#666666" />
         </View>
       )}
     </TouchableOpacity>
@@ -116,28 +120,18 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 12,
+    padding: 16,
+    marginHorizontal: 16,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  selectedContainer: {
-    backgroundColor: '#f5f5f5',
-    borderColor: 'black',
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-  },
-  selectedIconContainer: {
-    backgroundColor: 'black',
+    marginRight: 16,
   },
   content: {
     flex: 1,
@@ -145,24 +139,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '500',
-    color: 'black',
+    color: '#000000',
     marginBottom: 2,
   },
-  selectedText: {
-    color: 'black',
-    fontWeight: '600',
-  },
   subtitle: {
-    fontSize: 13,
-    color: 'rgba(0, 0, 0, 0.7)',
-  },
-  selectedSubtext: {
-    color: 'rgba(0, 0, 0, 0.9)',
+    fontSize: 14,
+    color: '#666666',
   },
   actions: {
     marginLeft: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
     padding: 4,
   },
 });

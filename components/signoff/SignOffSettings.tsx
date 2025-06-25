@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Switch, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { Button } from '../ui/Button';
-import { Text } from '../ui/Text';
+import { Text as CustomText } from '../ui/Text';
 import { SignOffSettings as SignOffSettingsType } from '@/types/signOff';
 import { useTheme } from '@/contexts/ThemeContext';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -148,20 +148,27 @@ export const SignOffSettings: React.FC<SignOffSettingsProps> = ({
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Inactivity Detection</Text>
+        <CustomText variant="h4" style={styles.sectionTitle}>Inactivity Check</CustomText>
+        <View style={styles.settingRow}>
+          <CustomText>Enable inactivity check</CustomText>
           <Switch
-            value={settings.inactivityCheck.enabled}
-            onValueChange={toggleInactivityCheck}
-            trackColor={{ false: '#767577', true: theme.colors.primary }}
+            value={settings.inactivityCheck?.enabled}
+            onValueChange={(value) =>
+              setSettings({
+                ...settings,
+                inactivityCheck: {
+                  ...settings.inactivityCheck,
+                  enabled: value,
+                },
+              })
+            }
           />
         </View>
-        
         {settings.inactivityCheck.enabled && (
           <View style={styles.settingItem}>
-            <Text>Days of inactivity before activation:</Text>
+            <CustomText>Days of inactivity before activation:</CustomText>
             <TextInput
               style={styles.input}
               value={settings.inactivityCheck.daysOfInactivity.toString()}
@@ -173,11 +180,11 @@ export const SignOffSettings: React.FC<SignOffSettingsProps> = ({
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Notification Methods</Text>
+        <CustomText variant="h4" style={styles.sectionTitle}>Notification Methods</CustomText>
         
         <View style={styles.settingItem}>
           <View style={styles.settingRow}>
-            <Text>Email Notifications</Text>
+            <CustomText>Email Notifications</CustomText>
             <Switch
               value={settings.notifications.email.enabled}
               onValueChange={(value) => toggleNotificationMethod('email', value)}
@@ -186,14 +193,14 @@ export const SignOffSettings: React.FC<SignOffSettingsProps> = ({
           </View>
           {settings.notifications.email.enabled && (
             <View style={styles.nestedSetting}>
-              <Text>Recipients (comma-separated emails):</Text>
+              <CustomText>Recipients (comma-separated emails):</CustomText>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 value={settings.notifications.email.recipients.join(', ')}
                 onChangeText={(value) => updateRecipients('email', value)}
                 multiline
               />
-              <Text>Message:</Text>
+              <CustomText>Message:</CustomText>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 value={settings.notifications.email.message}
@@ -213,7 +220,7 @@ export const SignOffSettings: React.FC<SignOffSettingsProps> = ({
 
         <View style={styles.settingItem}>
           <View style={styles.settingRow}>
-            <Text>SMS Notifications</Text>
+            <CustomText>SMS Notifications</CustomText>
             <Switch
               value={settings.notifications.sms.enabled}
               onValueChange={(value) => toggleNotificationMethod('sms', value)}
@@ -222,7 +229,7 @@ export const SignOffSettings: React.FC<SignOffSettingsProps> = ({
           </View>
           {settings.notifications.sms.enabled && (
             <View style={styles.nestedSetting}>
-              <Text>Phone Numbers (comma-separated):</Text>
+              <CustomText>Phone Numbers (comma-separated):</CustomText>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 value={settings.notifications.sms.phoneNumbers.join(', ')}
@@ -236,7 +243,7 @@ export const SignOffSettings: React.FC<SignOffSettingsProps> = ({
 
         <View style={styles.settingItem}>
           <View style={styles.settingRow}>
-            <Text>Social Media</Text>
+            <CustomText>Social Media</CustomText>
             <Switch
               value={settings.notifications.socialMedia.enabled}
               onValueChange={(value) => toggleNotificationMethod('socialMedia', value)}
@@ -248,7 +255,7 @@ export const SignOffSettings: React.FC<SignOffSettingsProps> = ({
               {settings.notifications.socialMedia.platforms.map((platform) => (
                 <View key={platform.name} style={styles.platformItem}>
                   <View style={styles.platformRow}>
-                    <Text>{platform.name}</Text>
+                    <CustomText>{platform.name}</CustomText>
                     <Switch
                       value={platform.enabled}
                       onValueChange={(value) => toggleSocialMedia(platform.name, value)}
@@ -286,9 +293,9 @@ export const SignOffSettings: React.FC<SignOffSettingsProps> = ({
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Digital Legacy</Text>
+        <CustomText variant="h4" style={styles.sectionTitle}>Digital Legacy</CustomText>
         <View style={styles.settingItem}>
-          <Text>What should happen to your data?</Text>
+          <CustomText>What should happen to your data?</CustomText>
           <View style={styles.radioGroup}>
             <TouchableOpacity 
               style={[
@@ -309,7 +316,7 @@ export const SignOffSettings: React.FC<SignOffSettingsProps> = ({
               ]}>
                 {settings.digitalLegacy.dataHandling === 'transfer' && <View style={styles.radioInner} />}
               </View>
-              <Text>Transfer to heirs</Text>
+              <CustomText>Transfer to heirs</CustomText>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -331,7 +338,7 @@ export const SignOffSettings: React.FC<SignOffSettingsProps> = ({
               ]}>
                 {settings.digitalLegacy.dataHandling === 'archive' && <View style={styles.radioInner} />}
               </View>
-              <Text>Archive</Text>
+              <CustomText>Archive</CustomText>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -353,21 +360,21 @@ export const SignOffSettings: React.FC<SignOffSettingsProps> = ({
               ]}>
                 {settings.digitalLegacy.dataHandling === 'delete' && <View style={styles.radioInner} />}
               </View>
-              <Text>Delete all data</Text>
+              <CustomText>Delete all data</CustomText>
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.settingDescription}>
+          <CustomText style={styles.settingDescription}>
             {settings.digitalLegacy.dataHandling === 'transfer' 
               ? 'Your data will be transferred to your designated heirs.'
               : settings.digitalLegacy.dataHandling === 'archive'
               ? 'Your data will be archived for legal and historical purposes.'
               : 'All your data will be permanently deleted.'}
-          </Text>
+          </CustomText>
         </View>
 
         <View style={styles.settingItem}>
-          <Text>Message to your heirs:</Text>
+          <CustomText>Message to your heirs:</CustomText>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={settings.digitalLegacy.messageToHeirs}
@@ -386,19 +393,12 @@ export const SignOffSettings: React.FC<SignOffSettingsProps> = ({
       </View>
 
       <View style={styles.buttonContainer}>
-        <Button
-          title="Save Settings"
-          onPress={handleSave}
-          style={styles.saveButton}
-        />
-        {onCancel && (
-          <Button
-            title="Cancel"
-            onPress={onCancel}
-            variant="outline"
-            style={styles.cancelButton}
-          />
-        )}
+        <Button onPress={onCancel} style={{ flex: 1 }}>
+          <CustomText>Cancel</CustomText>
+        </Button>
+        <Button onPress={handleSave} variant="outline" style={{ flex: 1 }}>
+          <CustomText>Save Changes</CustomText>
+        </Button>
       </View>
     </ScrollView>
   );

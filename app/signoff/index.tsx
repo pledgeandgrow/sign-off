@@ -4,7 +4,6 @@ import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SignOffSettings } from '@/components/signoff/SignOffSettings';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 import { SignOffSettings as SignOffSettingsType } from '@/types/signOff';
 
 export default function SignOffScreen() {
@@ -14,55 +13,36 @@ export default function SignOffScreen() {
   const [settings, setSettings] = useState<Partial<SignOffSettingsType>>({});
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      if (!user) return;
-      
+    // Load settings from local storage or use defaults
+    const loadSettings = async () => {
       try {
-        const { data, error } = await supabase
-          .from('user_settings')
-          .select('sign_off_settings')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error) throw error;
-        
-        if (data?.sign_off_settings) {
-          setSettings(data.sign_off_settings);
-        }
+        // TODO: Replace with actual local storage implementation
+        // const savedSettings = await AsyncStorage.getItem('signOffSettings');
+        // if (savedSettings) {
+        //   setSettings(JSON.parse(savedSettings));
+        // }
+        setIsLoading(false);
       } catch (error) {
-        console.error('Error fetching sign-off settings:', error);
-        Alert.alert('Error', 'Failed to load sign-off settings');
-      } finally {
+        console.error('Error loading settings:', error);
+        Alert.alert('Error', 'Failed to load settings');
         setIsLoading(false);
       }
     };
 
-    fetchSettings();
-  }, [user]);
+    loadSettings();
+  }, []);
 
   const handleSave = async (updatedSettings: SignOffSettingsType) => {
-    if (!user) return;
-    
     try {
       setIsLoading(true);
       
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: user.id,
-          sign_off_settings: updatedSettings,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'user_id',
-        });
-
-      if (error) throw error;
-      
-      Alert.alert('Success', 'Your sign-off settings have been saved');
-      router.back();
+      // TODO: Save to local storage
+      // await AsyncStorage.setItem('signOffSettings', JSON.stringify(updatedSettings));
+      setSettings(updatedSettings);
+      Alert.alert('Success', 'Settings saved successfully');
     } catch (error) {
-      console.error('Error saving sign-off settings:', error);
-      Alert.alert('Error', 'Failed to save sign-off settings');
+      console.error('Error saving settings:', error);
+      Alert.alert('Error', 'Failed to save settings');
     } finally {
       setIsLoading(false);
     }

@@ -1,12 +1,14 @@
-export interface Heir {
-  id: string;
+export interface HeirBase {
   name: string;
   email: string;
   phone: string;
   relationship: string;
-  percentage: number;
+}
+
+export interface Heir extends HeirBase {
+  id: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface HeirFormData extends Omit<Heir, 'id' | 'createdAt' | 'updatedAt'> {}
+export type HeirFormData = Omit<Heir, 'id' | 'createdAt' | 'updatedAt'>;

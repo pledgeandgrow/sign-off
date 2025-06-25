@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,11 +8,29 @@ import type { Heir, HeirFormData } from '../../types/heir';
 
 const HEIRS_STORAGE_KEY = '@SignOff:heirs';
 
+interface StoredHeir extends Omit<Heir, 'createdAt' | 'updatedAt'> {
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function HeirsScreen() {
   const insets = useSafeAreaInsets();
   const [heirs, setHeirs] = useState<Heir[]>([]);
   const [view, setView] = useState<'list' | 'add' | 'edit'>('list');
   const [currentHeir, setCurrentHeir] = useState<Heir | null>(null);
+
+  // Save heirs to AsyncStorage
+  const saveHeirsToStorage = useCallback(async (heirsToSave: Heir[]) => {
+    try {
+      const jsonValue = JSON.stringify(heirsToSave);
+      await AsyncStorage.setItem(HEIRS_STORAGE_KEY, jsonValue);
+      return true;
+    } catch (error) {
+      console.error('Failed to save heirs', error);
+      Alert.alert('Error', 'Failed to save heirs to storage');
+      return false;
+    }
+  }, []);
 
   // Load heirs from AsyncStorage on mount
   useEffect(() => {
@@ -20,14 +38,8 @@ export default function HeirsScreen() {
       try {
         const jsonValue = await AsyncStorage.getItem(HEIRS_STORAGE_KEY);
         if (jsonValue !== null) {
-          const storedHeirs = JSON.parse(jsonValue) as Heir[];
-          // Ensure all dates are properly parsed
-          const parsedHeirs = storedHeirs.map(heir => ({
-            ...heir,
-            createdAt: new Date(heir.createdAt).toISOString(),
-            updatedAt: new Date(heir.updatedAt).toISOString(),
-          }));
-          setHeirs(parsedHeirs);
+          const storedHeirs = JSON.parse(jsonValue) as StoredHeir[];
+          setHeirs(storedHeirs);
         }
       } catch (error) {
         console.error('Failed to load heirs', error);
@@ -38,47 +50,45 @@ export default function HeirsScreen() {
     loadHeirs();
   }, []);
 
-  // Save heirs to AsyncStorage whenever the list changes
+  // Save to storage whenever heirs change
   useEffect(() => {
-    const saveHeirs = async () => {
-      try {
-        const jsonValue = JSON.stringify(heirs);
-        await AsyncStorage.setItem(HEIRS_STORAGE_KEY, jsonValue);
-      } catch (error) {
-        console.error('Failed to save heirs', error);
-      }
-    };
-
     if (heirs.length > 0) {
-      saveHeirs();
+      saveHeirsToStorage(heirs);
     }
-  }, [heirs]);
+  }, [heirs, saveHeirsToStorage]);
 
-  const handleAddHeir = (data: HeirFormData) => {
+  const handleAddHeir = async (data: HeirFormData) => {
     const newHeir: Heir = {
       ...data,
       id: uuidv4(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    setHeirs(prevHeirs => [...prevHeirs, newHeir]);
+    
+    const updatedHeirs = [...heirs, newHeir];
+    setHeirs(updatedHeirs);
+    await saveHeirsToStorage(updatedHeirs);
     setView('list');
   };
 
-  const handleUpdateHeir = (data: HeirFormData & { id: string }) => {
-    setHeirs(prevHeirs =>
-      prevHeirs.map(heir =>
-        heir.id === data.id
-          ? { ...heir, ...data, updatedAt: new Date().toISOString() }
-          : heir
-      )
+  const handleUpdateHeir = async (data: HeirFormData & { id: string }) => {
+    const updatedHeirs = heirs.map(heir =>
+      heir.id === data.id
+        ? { ...heir, ...data, updatedAt: new Date().toISOString() }
+        : heir
     );
+    
+    setHeirs(updatedHeirs);
+    await saveHeirsToStorage(updatedHeirs);
     setView('list');
     setCurrentHeir(null);
   };
 
-  const handleDeleteHeir = (id: string) => {
-    setHeirs(prevHeirs => prevHeirs.filter(heir => heir.id !== id));
+  const handleDeleteHeir = async (id: string) => {
+    const updatedHeirs = heirs.filter(heir => heir.id !== id);
+    setHeirs(updatedHeirs);
+    await saveHeirsToStorage(updatedHeirs);
+    
     if (currentHeir?.id === id) {
       setCurrentHeir(null);
       setView('list');
@@ -125,11 +135,6 @@ export default function HeirsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {view === 'list' && (
-        <View style={styles.header}>
-          <Text style={styles.title}>Heirs</Text>
-        </View>
-      )}
       <View style={styles.content}>
         {renderContent()}
       </View>
@@ -157,6 +162,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    paddingTop: 16,
   },
   emptyState: {
     flex: 1,

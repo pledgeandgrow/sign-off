@@ -3,12 +3,12 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Vault } from '@/types/vault';
 
-
-type VaultHeaderProps = {
+interface VaultHeaderProps {
   vault: Vault;
   onBack: () => void;
   onLock: () => void;
   onAddItem: () => void;
+  onEdit?: () => void;
 };
 
 export const VaultHeader: React.FC<VaultHeaderProps> = ({
@@ -16,6 +16,7 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({
   onBack,
   onLock,
   onAddItem,
+  onEdit,
 }) => {
   // Using light theme with white background and black text
   const getCategoryLabel = (category: string) => {
@@ -37,12 +38,25 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <View style={styles.titleContainer}>
-          <Text style={styles.title} numberOfLines={1}>
-            {vault.name}
-          </Text>
-          <Text style={styles.category}>
-            {getCategoryLabel(vault.category)}
-          </Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title} numberOfLines={1}>
+              {vault.name}
+            </Text>
+          </View>
+          <View style={styles.subtitleRow}>
+            <Text style={styles.category}>
+              {getCategoryLabel(vault.category)}
+            </Text>
+            <Text style={styles.lockStatus}>
+              <MaterialIcons 
+                name={vault.isLocked ? 'lock' : 'lock-open'} 
+                size={14} 
+                color={vault.isLocked ? '#666' : '#888'}
+                style={styles.lockIcon}
+              />
+              {vault.isLocked ? ' Locked' : ' Unlocked'}
+            </Text>
+          </View>
         </View>
         
         <View style={styles.actions}>
@@ -59,8 +73,22 @@ export const VaultHeader: React.FC<VaultHeaderProps> = ({
             onPress={onLock}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <MaterialIcons name="lock-outline" size={24} color="black" />
+            <MaterialIcons 
+              name={vault.isLocked ? 'lock' : 'lock-open'} 
+              size={24} 
+              color="#000" 
+            />
           </TouchableOpacity>
+          
+          {onEdit && (
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={onEdit}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <MaterialIcons name="edit" size={24} color="#000" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
       
@@ -106,7 +134,17 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     flex: 1,
-    marginRight: 16,
+    marginRight: 12,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  subtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
   },
   title: {
     fontSize: 20,
@@ -117,6 +155,14 @@ const styles = StyleSheet.create({
   category: {
     fontSize: 14,
     color: 'rgba(0, 0, 0, 0.7)',
+  },
+  lockStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  lockIcon: {
+    marginRight: 4,
   },
   actions: {
     flexDirection: 'row',

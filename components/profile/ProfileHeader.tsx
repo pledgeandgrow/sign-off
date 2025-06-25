@@ -226,7 +226,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         <MaterialIcons 
           name="edit" 
           size={editButtonIconSize} 
-          color={theme.colors.text} 
+          color="#FFFFFF" 
         />
       </TouchableOpacity>
     );
@@ -244,10 +244,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           style={[
             styles.name, 
             { 
-              color: theme.colors.text,
-              textShadowColor: 'rgba(0,0,0,0.2)',
-              textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 2,
+              color: '#000000',
             },
             nameStyle,
           ]}
@@ -265,7 +262,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             <MaterialIcons 
               name="email" 
               size={16} 
-              color={theme.colors.text} 
+              color="#000000" 
               style={styles.emailIcon}
               testID="email-icon"
             />
@@ -273,11 +270,8 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               style={[
                 styles.email, 
                 { 
-                  color: theme.colors.text,
+                  color: '#000000',
                   opacity: 0.9,
-                  textShadowColor: 'rgba(0,0,0,0.2)',
-                  textShadowOffset: { width: 0, height: 1 },
-                  textShadowRadius: 2,
                 },
                 emailStyle,
               ]}
@@ -350,24 +344,23 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
     style: [styles.container, style],
   };
 
-  return showGradient ? (
-    <LinearGradient {...gradientProps} testID={testID}>
-      {renderContent()}
-    </LinearGradient>
-  ) : (
-    <View style={[styles.container, { backgroundColor: theme.colors.primary }, style]} testID={testID}>
+  return (
+    <View style={[styles.container, style]} testID={testID}>
       {renderContent()}
     </View>
   );
-};
+}
+
+
 
 const styles = StyleSheet.create({
   container: {
     padding: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    marginBottom: 24,
-    overflow: 'hidden',
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    margin: 16,
+    marginBottom: 8,
   },
   content: {
     alignItems: 'center',
@@ -414,8 +407,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   name: {
-    fontSize: 24,
-    marginBottom: 4,
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#000000',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  email: {
+    fontSize: 14,
+    color: '#666666',
+    marginTop: 4,
     textAlign: 'center',
   },
   emailContainer: {

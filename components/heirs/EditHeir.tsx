@@ -22,8 +22,7 @@ const EditHeir: React.FC<EditHeirProps> = ({
     name: heir.name,
     email: heir.email,
     phone: heir.phone,
-    relationship: heir.relationship,
-    percentage: heir.percentage,
+    relationship: heir.relationship
   });
 
   useEffect(() => {
@@ -31,18 +30,9 @@ const EditHeir: React.FC<EditHeirProps> = ({
       name: heir.name,
       email: heir.email,
       phone: heir.phone,
-      relationship: heir.relationship,
-      percentage: heir.percentage,
+      relationship: heir.relationship
     });
   }, [heir]);
-
-  // Calculate remaining percentage that can be allocated
-  const totalAllocatedPercentage = existingHeirs
-    .filter((h) => h.id !== heir.id)
-    .reduce((sum, h) => sum + h.percentage, 0);
-  
-  const remainingPercentage = 100 - totalAllocatedPercentage;
-  const maxPercentage = remainingPercentage + heir.percentage;
 
   const handleInputChange = (field: keyof HeirFormData, value: string | number) => {
     setFormData(prev => ({
@@ -52,7 +42,7 @@ const EditHeir: React.FC<EditHeirProps> = ({
   };
 
   const validateForm = (): boolean => {
-    const { name, email, phone, relationship, percentage } = formData;
+    const { name, email, phone, relationship } = formData;
     
     if (!name.trim()) {
       Alert.alert('Error', 'Please enter a name');
@@ -71,20 +61,6 @@ const EditHeir: React.FC<EditHeirProps> = ({
     
     if (!relationship.trim()) {
       Alert.alert('Error', 'Please specify the relationship');
-      return false;
-    }
-    
-    if (isNaN(Number(percentage)) || Number(percentage) <= 0 || Number(percentage) > 100) {
-      Alert.alert('Error', 'Please enter a valid percentage between 1 and 100');
-      return false;
-    }
-    
-    const otherHeirs = existingHeirs.filter(h => h.id !== heir.id);
-    const totalAllocated = otherHeirs.reduce((sum, h) => sum + h.percentage, 0);
-    const totalPercentage = totalAllocated + Number(percentage);
-    
-    if (totalPercentage > 100) {
-      Alert.alert('Error', `Total percentage cannot exceed 100%. Current total would be ${totalPercentage}%`);
       return false;
     }
     
@@ -112,12 +88,8 @@ const EditHeir: React.FC<EditHeirProps> = ({
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Edit Heir</Text>
-      </View>
-
-      <View style={styles.form}>
+    <View style={styles.container}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.formGroup}>
           <Text style={styles.label}>Full Name</Text>
           <TextInput
@@ -158,45 +130,20 @@ const EditHeir: React.FC<EditHeirProps> = ({
             placeholder="e.g., Spouse, Child, Sibling"
           />
         </View>
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Percentage Allocation</Text>
-          <View style={styles.percentageContainer}>
-            <TextInput
-              style={styles.percentageInput}
-              value={formData.percentage.toString()}
-              onChangeText={(text) => handleInputChange('percentage', text.replace(/[^0-9]/g, ''))}
-              keyboardType="numeric"
-              placeholder="0"
-            />
-            <Text style={styles.percentageSuffix}>%</Text>
-          </View>
-          <Text style={styles.percentageInfo}>
-            Maximum allocation available: {maxPercentage}%
-          </Text>
-        </View>
 
         <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={handleDelete}
-          >
-            <Text style={styles.deleteButtonText}>Delete</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={onCancel}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={handleSave}
-          >
+          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
             <Text style={styles.saveButtonText}>Save Changes</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+            <Text style={styles.deleteButtonText}>Delete Heir</Text>
+          </TouchableOpacity>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
@@ -204,102 +151,106 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white',
-    padding: 16,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-    paddingTop: 8,
+  scrollView: {
+    flex: 1,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: 'black',
-  },
-  form: {
+  scrollContent: {
     padding: 16,
   },
   formGroup: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   label: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
-    padding: 14,
-    fontSize: 16,
-    color: 'black',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#E5E7EB',
+    padding: 12,
+    fontSize: 16,
+    color: '#111827',
+    height: 48,
   },
   percentageContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    gap: 8,
   },
   percentageInput: {
     flex: 1,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
-    padding: 14,
-    fontSize: 16,
-    color: 'black',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    marginRight: 8,
+    borderColor: '#E5E7EB',
+    padding: 12,
+    fontSize: 16,
+    color: '#111827',
+    height: 48,
   },
   percentageSuffix: {
     fontSize: 16,
-    color: '#666',
-    width: 40,
+    color: '#6B7280',
+    marginBottom: 16,
   },
   percentageInfo: {
-    marginTop: 6,
-    fontSize: 14,
-    color: '#666',
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
     fontStyle: 'italic',
   },
   buttonContainer: {
     marginTop: 24,
-  },
-  button: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  saveButton: {
-    backgroundColor: '#007AFF',
-  },
-  cancelButton: {
-    backgroundColor: '#f0f0f0',
-  },
-  deleteButton: {
-    backgroundColor: '#ff3b30',
-    flexDirection: 'row',
-    justifyContent: 'center',
     gap: 8,
   },
-  buttonText: {
-    color: '#fff',
+  saveButton: {
+    backgroundColor: '#000000',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    textAlign: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
   },
   cancelButtonText: {
-    color: '#333',
+    color: '#374151',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
+    marginTop: 8,
   },
   deleteButtonText: {
-    color: '#fff',
+    color: '#DC2626',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

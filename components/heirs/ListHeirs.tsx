@@ -24,7 +24,6 @@ const ListHeirs = ({
       <View style={styles.itemContent}>
         <View style={styles.itemHeader}>
           <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">{item.name}</Text>
-          <Text style={styles.percentage}>{item.percentage}%</Text>
         </View>
         <Text style={styles.relationship}>{item.relationship}</Text>
         {item.email ? (
@@ -64,7 +63,7 @@ const ListHeirs = ({
       <View style={styles.header}>
         <Text style={styles.title}>Heirs</Text>
         <TouchableOpacity onPress={onAdd} style={styles.addButton}>
-          <MaterialIcons name="add" size={24} color="#FFFFFF" />
+          <MaterialIcons name="add" size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
       
@@ -106,9 +105,9 @@ const styles = StyleSheet.create({
   },
   addButton: {
     backgroundColor: 'black',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 2,

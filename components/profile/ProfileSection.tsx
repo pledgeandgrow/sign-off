@@ -46,7 +46,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
             style={[
               styles.title,
               { 
-                color: theme.colors.textSecondary,
+                color: '#000000',
               },
               titleStyle,
             ]}
@@ -109,8 +109,8 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
       style={[
         styles.container, 
         { 
-          backgroundColor: theme.colors.card,
-          borderColor: theme.colors.border,
+          backgroundColor: '#ffffff',
+          borderColor: '#f0f0f0',
         },
         style,
       ]}
@@ -130,21 +130,28 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 24,
+    marginBottom: 16,
     borderRadius: 12,
+    backgroundColor: '#ffffff',
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
+    marginHorizontal: 16,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: 'transparent',
   },
   title: {
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   headerRight: {
@@ -153,5 +160,7 @@ const styles = StyleSheet.create({
   content: {
     borderRadius: 12,
     overflow: 'hidden',
-  },
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 0,
+  }
 });

@@ -20,15 +20,8 @@ const AddHeir = ({ onSubmit, onCancel, existingHeirs }: AddHeirProps) => {
     name: '',
     email: '',
     phone: '',
-    relationship: '',
-    percentage: 0,
+    relationship: ''
   });
-
-  const totalAllocatedPercentage = existingHeirs.reduce(
-    (sum, heir) => sum + heir.percentage,
-    0
-  );
-  const remainingPercentage = 100 - totalAllocatedPercentage;
 
   const handleInputChange = (field: keyof HeirFormData, value: string | number) => {
     setFormData(prev => ({
@@ -57,17 +50,6 @@ const AddHeir = ({ onSubmit, onCancel, existingHeirs }: AddHeirProps) => {
     
     if (!relationship.trim()) {
       Alert.alert('Error', 'Please specify the relationship');
-      return false;
-    }
-    
-    if (isNaN(Number(percentage)) || Number(percentage) <= 0 || Number(percentage) > 100) {
-      Alert.alert('Error', 'Please enter a valid percentage between 1 and 100');
-      return false;
-    }
-    
-    const totalPercentage = existingHeirs.reduce((sum, heir) => sum + heir.percentage, 0) + Number(percentage);
-    if (totalPercentage > 100) {
-      Alert.alert('Error', `Total percentage cannot exceed 100%. Current total would be ${totalPercentage}%`);
       return false;
     }
     
@@ -126,31 +108,7 @@ const AddHeir = ({ onSubmit, onCancel, existingHeirs }: AddHeirProps) => {
         />
       </View>
 
-      <View style={styles.formGroup}>
-        <View style={styles.percentageHeader}>
-          <Text style={styles.label}>Percentage</Text>
-          <Text style={styles.percentageRemaining}>
-            {remainingPercentage}% remaining
-          </Text>
-        </View>
-        <View style={styles.percentageInputContainer}>
-          <TextInput
-            style={[styles.input, styles.percentageInput]}
-            value={formData.percentage ? formData.percentage.toString() : ''}
-            onChangeText={(text) => {
-              const value = parseInt(text, 10) || 0;
-              handleInputChange('percentage', value);
-            }}
-            placeholder="0"
-            keyboardType="numeric"
-            maxLength={3}
-          />
-          <Text style={styles.percentageSymbol}>%</Text>
-        </View>
-        <Text style={styles.hintText}>
-          Enter a value between 1 and {remainingPercentage}%
-        </Text>
-      </View>
+
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
