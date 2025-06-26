@@ -1,29 +1,9 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, ViewStyle, TextStyle } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { VaultItem, VaultItemType } from '@/types/vault';
 import { Text } from '../ui/Text';
 import { useTheme } from '@/contexts/ThemeContext';
-
-interface VaultItemViewStyles {
-  container: ViewStyle;
-  header: ViewStyle;
-  headerContent: ViewStyle;
-  iconContainer: ViewStyle;
-  title: TextStyle;
-  editButton: ViewStyle;
-  divider: ViewStyle;
-  detailsContainer: ViewStyle;
-  detailRow: ViewStyle;
-  label: TextStyle;
-  value: TextStyle;
-  metadataSection: ViewStyle;
-  link: TextStyle;
-  noteText: TextStyle;
-  tagsContainer: ViewStyle;
-  tag: ViewStyle;
-  tagText: TextStyle;
-}
 
 const itemIcons: Record<VaultItemType, keyof typeof MaterialIcons.glyphMap> = {
   password: 'vpn-key',
@@ -45,11 +25,6 @@ const formatDate = (dateString: string) => {
     minute: '2-digit',
   });
 };
-
-interface VaultItemViewProps {
-  item: VaultItem;
-  onEdit: () => void;
-}
 
 export const ViewItem: React.FC<{ item: VaultItem; onEdit: () => void }> = ({ item, onEdit }) => {
   const { theme } = useTheme();

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 
-import { HeirFormData } from '../../types/heir';
+import { HeirFormData } from '@/types/heir';
 
 interface AddHeirProps {
   onSubmit: (data: HeirFormData) => void;
@@ -9,13 +9,7 @@ interface AddHeirProps {
   existingHeirs: { percentage: number }[];
 }
 
-interface AddHeirProps {
-  onSubmit: (data: HeirFormData) => void;
-  onCancel: () => void;
-  existingHeirs: { percentage: number }[];
-}
-
-const AddHeir = ({ onSubmit, onCancel, existingHeirs }: AddHeirProps) => {
+export const AddHeir: React.FC<AddHeirProps> = ({ onSubmit, onCancel, existingHeirs }) => {
   const [formData, setFormData] = useState<HeirFormData>({
     name: '',
     email: '',
@@ -31,7 +25,7 @@ const AddHeir = ({ onSubmit, onCancel, existingHeirs }: AddHeirProps) => {
   };
 
   const validateForm = (): boolean => {
-    const { name, email, phone, relationship, percentage } = formData;
+    const { name, email, phone, relationship } = formData;
     
     if (!name.trim()) {
       Alert.alert('Error', 'Please enter a name');
@@ -226,4 +220,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export { AddHeir };
+

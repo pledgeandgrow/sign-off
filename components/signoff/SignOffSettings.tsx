@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Switch, TextInput, TouchableOpacity, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, Switch, TextInput, TouchableOpacity } from 'react-native';
 import { Button } from '../ui/Button';
 import { Text as CustomText } from '../ui/Text';
 import { SignOffSettings as SignOffSettingsType } from '@/types/signOff';
 import { useTheme } from '@/contexts/ThemeContext';
-import { MaterialIcons } from '@expo/vector-icons';
+
 
 interface SignOffSettingsProps {
   initialSettings?: Partial<SignOffSettingsType>;
@@ -79,16 +79,6 @@ export const SignOffSettings: React.FC<SignOffSettingsProps> = ({
       lastUpdated: new Date().toISOString(),
     };
     onSave?.(updatedSettings);
-  };
-
-  const toggleInactivityCheck = (value: boolean) => {
-    setSettings(prev => ({
-      ...prev,
-      inactivityCheck: {
-        ...prev.inactivityCheck,
-        enabled: value,
-      },
-    }));
   };
 
   const updateInactivityDays = (days: string) => {

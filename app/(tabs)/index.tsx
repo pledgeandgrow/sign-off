@@ -1,10 +1,8 @@
 import { QuickAccessCard, RecentActivity } from '@/components/home';
 import type { ActivityItem as ActivityItemType } from '@/components/home/RecentActivity';
-import { useRouter } from 'expo-router';
 import React from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView as SafeAreaViewRN } from 'react-native-safe-area-context';
-import { useAuth } from '../../contexts/AuthContext';
 
 const QUICK_ACCESS = [
   {
@@ -58,8 +56,6 @@ const RECENT_ACTIVITIES: ActivityItemType[] = [
 ];
 
 export default function HomeScreen() {
-  const router = useRouter();
-  const { user } = useAuth();
   const [refreshing, setRefreshing] = React.useState(false);
 
   const onRefresh = React.useCallback(() => {

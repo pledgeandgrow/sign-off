@@ -1,4 +1,3 @@
-import { useTheme } from '@/contexts/ThemeContext';
 import { Vault, VaultCategory } from '@/types/vault';
 import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
@@ -25,8 +24,6 @@ const categoryLabels: Record<VaultCategory, string> = {
 };
 
 const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress, isSelected = false }) => {
-  const { colors: themeColors } = useTheme();
-  
   // Use consistent colors matching the heirs page design
   const colors = {
     card: '#ffffff',

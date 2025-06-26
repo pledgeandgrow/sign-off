@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Vault, VaultCategory } from '@/types/vault';
-import { View, TextInput, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Vault } from '@/types/vault';
+import { View, TextInput, StyleSheet, ScrollView, Platform } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type EditVaultProps = {
   vault: Vault;
@@ -11,19 +11,14 @@ type EditVaultProps = {
   onCancel: () => void;
 };
 
-const CATEGORIES = [
-  { value: 'delete_after_death', label: 'Delete After Death' },
-  { value: 'share_after_death', label: 'Share After Death' },
-  { value: 'handle_after_death', label: 'Handle After Death' },
-  { value: 'sign_off_after_death', label: 'Sign Off After Death (Premium)' },
-] as const;
+// Categories are now managed by the parent component or API
 
 export const EditVault: React.FC<EditVaultProps> = ({
   vault,
   onSave,
   onCancel,
 }) => {
-  const { theme } = useTheme();
+  useTheme(); // Theme context might be used by child components
   const [formData, setFormData] = useState<Vault>(vault);
   const [errors, setErrors] = useState<{ name?: string }>({});
 

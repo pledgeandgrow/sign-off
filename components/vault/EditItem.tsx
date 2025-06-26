@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { VaultItem, VaultItemType } from '@/types/vault';
+import { VaultItem } from '@/types/vault';
 import { View, TextInput, StyleSheet, ScrollView, ViewStyle, TextStyle } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';

@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert, Text } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SignOffSettings } from '@/components/signoff/SignOffSettings';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { SignOffSettings as SignOffSettingsType } from '@/types/signOff';
 
 export default function SignOffScreen() {
-  const { user } = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [settings, setSettings] = useState<Partial<SignOffSettingsType>>({});

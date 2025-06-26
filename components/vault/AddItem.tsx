@@ -1,22 +1,20 @@
-import { useTheme } from '@/contexts/ThemeContext';
 import { VaultItem, VaultItemType } from '@/types/vault';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useNavigation } from 'expo-router';
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
+import { Button } from '../ui/Button';
 import {
-  ActivityIndicator,
-  Dimensions,
-  Keyboard,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
-  StyleSheet,
+  View,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  StyleSheet,
+  Dimensions,
 } from 'react-native';
+
+
 
 type VaultItemFormData = {
   title: string;
@@ -64,42 +62,9 @@ const getDefaultMetadata = (type: VaultItemType): Record<string, any> => {
       return { walletAddress: '', privateKey: '', network: '' };
     case 'bank':
       return { accountNumber: '', routingNumber: '', accountType: '' };
-    case 'document':
-    case 'image':
-    case 'video':
-      return { fileName: '', fileSize: 0, fileType: '' };
     default:
       return {};
   }
-};
-
-// Fallback theme that matches the project's design system
-const fallbackTheme = {
-  colors: {
-    primary: '#000000',
-    background: '#FFFFFF',
-    card: '#FFFFFF',
-    text: '#000000',
-    textSecondary: '#666666',
-    muted: '#6B7280',
-    border: '#E5E5EA',
-    notification: '#FF3B30',
-    success: '#34C759',
-    warning: '#FF9500',
-    error: '#FF3B30',
-    info: '#007AFF',
-    gray50: '#F8F8F8',
-    gray100: '#F2F2F7',
-    gray200: '#E5E5EA',
-    gray300: '#D1D1D6',
-    gray400: '#C7C7CC',
-    gray500: '#AEAEB2',
-    gray600: '#8E8E93',
-    gray700: '#636366',
-    gray800: '#3A3A3C',
-    gray900: '#1C1C1E',
-  },
-  dark: false,
 };
 
 const AddItem: React.FC<VaultItemFormProps> = ({
@@ -108,8 +73,7 @@ const AddItem: React.FC<VaultItemFormProps> = ({
   initialData = {},
   isSubmitting = false
 }) => {
-  const navigation = useNavigation();
-  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  // Keyboard visibility state is kept for potential future use
   const [activeTab, setActiveTab] = useState<'details' | 'preview'>('details');
   const [formData, setFormData] = useState<VaultItemFormData>(() => ({
     title: initialData.title || '',
@@ -124,13 +88,6 @@ const AddItem: React.FC<VaultItemFormProps> = ({
     return formData.title.trim().length > 0;
   }, [formData.title]);
 
-  const handleInputChange = useCallback((field: keyof VaultItemFormData, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  }, []);
-
   const handleMetadataChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -141,16 +98,7 @@ const AddItem: React.FC<VaultItemFormProps> = ({
     }));
   }, []);
 
-  const handleTypeSelect = useCallback((type: VaultItemType) => {
-    setFormData(prev => ({
-      ...prev,
-      type,
-      metadata: {
-        ...getDefaultMetadata(type),
-        ...(type === prev.type ? prev.metadata : {})
-      }
-    }));
-  }, []);
+
 
   const handleSubmit = useCallback(() => {
     if (!isFormValid()) return;
@@ -426,6 +374,121 @@ const AddItem: React.FC<VaultItemFormProps> = ({
 };
 
 const styles = StyleSheet.create({
+  // Tabs
+  tabs: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  tab: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabText: {
+    color: '#666',
+    fontWeight: '400',
+  },
+  activeTab: {
+    borderBottomColor: '#4F46E5',
+  },
+  activeTabText: {
+    color: '#4F46E5',
+    fontWeight: '600',
+  },
+  
+  // Scroll content
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 24,
+  },
+  
+  // Type selection
+  typeScroll: {
+    marginBottom: 16,
+  },
+  typeScrollContent: {
+    paddingHorizontal: 16,
+  },
+  typeButton: {
+    width: ITEM_WIDTH,
+    marginRight: 12,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+  typeButtonActive: {
+    backgroundColor: '#F5F3FF',
+    borderColor: '#C7D2FE',
+  },
+  typeIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  typeIconContainerActive: {
+    backgroundColor: '#EEF2FF',
+  },
+  typeLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#4B5563',
+    textAlign: 'center',
+  },
+  typeLabelActive: {
+    color: '#4F46E5',
+    fontWeight: '600',
+  },
+  
+  // Toggle
+  toggleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+    padding: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+  },
+  toggleLabel: {
+    flex: 1,
+    fontSize: 16,
+    color: '#111827',
+  },
+  toggle: {
+    width: 48,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#D1D5DB',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  toggleActive: {
+    backgroundColor: '#4F46E5',
+  },
+  toggleThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'white',
+  },
+  toggleThumbActive: {
+    transform: [{ translateX: 20 }],
+  },
+  toggleDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+  },
   buttonText: {
     fontSize: 16,
     fontWeight: '600',
@@ -442,6 +505,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
     color: '#000',
+    fontWeight: '400',
   },
   inputContainer: {
     borderWidth: 1,
@@ -473,19 +537,23 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   footer: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E5E5',
     flexDirection: 'row',
     justifyContent: 'space-between',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    backgroundColor: '#fff',
   },
   cancelButton: {
     flex: 1,
     marginRight: 8,
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   submitButton: {
     flex: 1,
-    marginLeft: 8,
+    backgroundColor: '#4F46E5',
   },
   previewContainer: {
     padding: 16,
@@ -543,25 +611,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: '#000',
-  },
-  footer: {
-    flexDirection: 'row',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    backgroundColor: '#fff',
-    ...Platform.select({
-      ios: {
-        paddingBottom: 34, // Add extra padding for iPhone home indicator
-      },
-    }),
-  },
-  cancelButton: {
-    flex: 1,
-    marginRight: 12,
-  },
-  submitButton: {
-    flex: 1,
   },
 });
 

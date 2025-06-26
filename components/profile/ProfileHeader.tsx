@@ -12,7 +12,7 @@ import {
   TouchableWithoutFeedback
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useTheme } from '@/contexts/ThemeContext';
 import { Text } from '@/components/ui/Text';
 
@@ -337,12 +337,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
     );
   }
 
-  const gradientProps = {
-    colors: gradientColors || [theme.colors.primary, theme.colors.primary + 'CC'],
-    start: gradientStart,
-    end: gradientEnd,
-    style: [styles.container, style],
-  };
+  // Gradient props are now handled inline where needed
 
   return (
     <View style={[styles.container, style]} testID={testID}>
@@ -413,7 +408,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: 'center',
   },
-  email: {
+  emailText: {
     fontSize: 14,
     color: '#666666',
     marginTop: 4,

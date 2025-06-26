@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, StyleSheet, TextInput, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { VaultCategory } from '@/types/vault';
 import { Button } from '../ui/Button';
@@ -11,12 +11,7 @@ type VaultFormData = {
   category: VaultCategory;
 };
 
-type VaultFormProps = {
-  initialData?: Partial<VaultFormData>;
-  onSubmit: (vault: VaultFormData) => void;
-  onCancel: () => void;
-  isSubmitting?: boolean;
-};
+
 
 const CATEGORIES = [
   {
@@ -185,6 +180,11 @@ const styles = StyleSheet.create({
     padding: 16,
     height: 52,
     fontFamily: 'Inter-Regular',
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    marginBottom: 16,
   },
   textAreaContainer: {
     minHeight: 120,
@@ -193,6 +193,7 @@ const styles = StyleSheet.create({
     height: '100%',
     textAlignVertical: 'top',
     paddingTop: 16,
+    minHeight: 100,
   },
   label: {
     fontSize: 16,
@@ -203,6 +204,7 @@ const styles = StyleSheet.create({
   },
   categoriesContainer: {
     marginTop: 8,
+    marginBottom: 20,
   },
   categoryButton: {
     flexDirection: 'row',
@@ -229,6 +231,9 @@ const styles = StyleSheet.create({
     color: '#000',
     marginBottom: 4,
   },
+  categoryLabelActive: {
+    color: '#1976d2',
+  },
   categoryDescription: {
     fontSize: 14,
     color: '#666',
@@ -240,74 +245,14 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
     backgroundColor: '#fff',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
     ...Platform.select({
       ios: {
         paddingBottom: 34, // Add extra padding for iPhone home indicator
       },
     }),
-  },
-  cancelButton: {
-    flex: 1,
-    marginRight: 12,
-  },
-  submitButton: {
-    flex: 1,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: 'black',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    fontSize: 16,
-    color: 'black',
-  },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-    backgroundColor: 'white',
-    color: 'black',
-  },
-  categoriesContainer: {
-    marginBottom: 20,
-  },
-  categoryButton: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
-    backgroundColor: '#f5f5f5',
-  },
-  categoryButtonActive: {
-    borderColor: 'black',
-    backgroundColor: '#f0f0f0',
-  },
-  categoryLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: 'black',
-    marginBottom: 4,
-  },
-  categoryLabelActive: {
-    color: '#1976d2',
-  },
-  categoryDescription: {
-    fontSize: 14,
-    color: 'rgba(0, 0, 0, 0.7)',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
   },
   cancelButton: {
     flex: 1,

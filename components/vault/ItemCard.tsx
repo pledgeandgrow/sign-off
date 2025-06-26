@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
 import { VaultItem, VaultItemType } from '@/types/vault';
 import { useTheme } from '@/contexts/ThemeContext';
 import { MaterialIcons as Icons } from '@expo/vector-icons';
@@ -34,7 +33,7 @@ export const VaultItemCard: React.FC<VaultItemCardProps> = ({
   onDelete,
   isSelected = false,
 }) => {
-  const { theme } = useTheme();
+  useTheme(); // Theme context might be used by child components
   const iconName = itemIcons[item.type] || 'more-horiz';
   
   return (
