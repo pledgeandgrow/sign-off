@@ -2,6 +2,8 @@ import { Vault, VaultCategory } from '@/types/vault';
 import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 type VaultCardProps = {
   vault: Vault;
@@ -17,46 +19,38 @@ const categoryIcons: Record<VaultCategory, string> = {
 };
 
 const categoryLabels: Record<VaultCategory, string> = {
-  delete_after_death: 'Delete After Death',
-  share_after_death: 'Share After Death',
-  handle_after_death: 'Handle After Death',
-  sign_off_after_death: 'Sign Off After Death',
+  delete_after_death: 'Supprimer après la mort',
+  share_after_death: 'Partager après la mort',
+  handle_after_death: 'Gérer après la mort',
+  sign_off_after_death: 'Sign-off après la mort',
 };
 
 const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress, isSelected = false }) => {
-  // Use consistent colors matching the heirs page design
-  const colors = {
-    card: '#ffffff',
-    primary: '#000000',
-    border: '#f0f0f0',
-    text: '#000000',
-    textSecondary: '#666666',
-  };
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
   
   const itemCount = vault.items?.length || 0;
   const iconName = vault.icon || categoryIcons[vault.category] || 'lock';
-  const label = vault.name || categoryLabels[vault.category] || 'Vault';
+  const label = vault.name || categoryLabels[vault.category] || 'Coffre-fort';
 
   return (
     <TouchableOpacity 
       style={[
         styles.container, 
         { 
-          backgroundColor: colors.card,
-          borderColor: isSelected ? colors.primary : colors.border,
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          borderColor: isSelected ? colors.purple.primary : 'rgba(255, 255, 255, 0.1)',
           borderWidth: 1,
-          borderRadius: 8,
-          marginBottom: 8,
         }
       ]}
       onPress={onPress}
       activeOpacity={0.8}
     >
-      <View style={styles.iconContainer}>
+      <View style={[styles.iconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
         <MaterialIcons 
           name={iconName as any} 
           size={20} 
-          color={isSelected ? colors.primary : colors.text}
+          color={colors.purple.primary}
         />
       </View>
       <View style={styles.content}>
@@ -65,7 +59,7 @@ const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress, isSelected = fals
             styles.title, 
             { 
               color: colors.text,
-              fontWeight: '500',
+              fontWeight: '600',
               fontSize: 16,
             }
           ]}
@@ -74,7 +68,7 @@ const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress, isSelected = fals
           {label}
         </Text>
         <Text style={[styles.itemCount, { color: colors.textSecondary, fontSize: 14 }]}>
-          {itemCount} {itemCount === 1 ? 'item' : 'items'}
+          {itemCount} {itemCount === 1 ? 'élément' : 'éléments'}
         </Text>
       </View>
       <MaterialIcons 
@@ -93,17 +87,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderRadius: 12,
-    backgroundColor: 'white',
     borderWidth: 1,
-    borderColor: '#f0f0f0',
     width: '100%',
   },
   iconContainer: {
     marginRight: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -112,7 +103,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 16,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   itemCount: {
     fontSize: 14,

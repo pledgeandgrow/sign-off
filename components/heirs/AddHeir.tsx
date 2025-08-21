@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 
-import { HeirFormData } from '@/types/heir';
+import { HeirFormData, Heir } from '@/types/heir';
 
 interface AddHeirProps {
   onSubmit: (data: HeirFormData) => void;
   onCancel: () => void;
-  existingHeirs: { percentage: number }[];
+  existingHeirs: Heir[];
 }
 
 export const AddHeir: React.FC<AddHeirProps> = ({ onSubmit, onCancel, existingHeirs }) => {

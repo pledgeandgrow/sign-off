@@ -1,12 +1,18 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Logo } from '../../components/ui/Logo';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { AppLink } from '../../components/ui/AppLink';
 import { ROUTES } from '../../app/routes';
+import { MaterialIcons } from '@expo/vector-icons';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function SignUp() {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
+  
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -16,6 +22,8 @@ export default function SignUp() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
   const router = useRouter();
 
   const handleChange = (field: string, value: string) => {
@@ -29,17 +37,17 @@ export default function SignUp() {
     const { firstName, lastName, email, password, confirmPassword } = formData;
     
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
-      setError('Please fill in all fields');
+      setError('Veuillez remplir tous les champs');
       return;
     }
     
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError('Les mots de passe ne correspondent pas');
       return;
     }
     
     if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
+      setError('Le mot de passe doit contenir au moins 8 caractères');
       return;
     }
     
@@ -53,192 +61,367 @@ export default function SignUp() {
       // Navigate to email verification screen
       router.replace(`/verify-email?email=${encodeURIComponent(email)}` as any);
     } catch {
-      setError('Failed to create account. Please try again.');
+      setError('Échec de la création du compte. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <View style={styles.container}>
-        <StatusBar style="dark" />
-        
-        <View style={styles.logoContainer}>
-          <Logo size={100} />
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join us to secure your digital legacy</Text>
-        </View>
-        
-        <View style={styles.form}>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          
-          <View style={styles.nameContainer}>
-            <TextInput
-              style={[styles.input, styles.nameInput]}
-              placeholder="First Name"
-              value={formData.firstName}
-              onChangeText={(text) => handleChange('firstName', text)}
-              autoCapitalize="words"
-            />
-            <TextInput
-              style={[styles.input, styles.nameInput]}
-              placeholder="Last Name"
-              value={formData.lastName}
-              onChangeText={(text) => handleChange('lastName', text)}
-              autoCapitalize="words"
-            />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style="light" backgroundColor={colors.background} />
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            {/* Header Section */}
+            <View style={styles.header}>
+              <View style={styles.logoContainer}>
+                <View style={[styles.logoWrapper, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+                  <Logo size={70} />
+                </View>
+                <Text style={[styles.title, { color: colors.text }]}>Créer un compte</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                  Rejoignez-nous pour sécuriser votre héritage numérique
+                </Text>
+              </View>
+            </View>
+            
+            {/* Form Section */}
+            <View style={styles.formContainer}>
+              <View style={styles.form}>
+                {error ? (
+                  <View style={[styles.errorContainer, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeftColor: colors.error }]}>
+                    <MaterialIcons name="error-outline" size={20} color={colors.error} />
+                    <Text style={[styles.error, { color: colors.error }]}>{error}</Text>
+                  </View>
+                ) : null}
+                
+                <View style={styles.nameRow}>
+                  <View style={[styles.inputContainer, styles.nameInputContainer]}>
+                    <MaterialIcons name="person" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.input, { 
+                        backgroundColor: colors.backgroundSecondary,
+                        borderColor: colors.border,
+                        color: colors.text
+                      }]}
+                      placeholder="Prénom"
+                      value={formData.firstName}
+                      onChangeText={(text) => handleChange('firstName', text)}
+                      autoCapitalize="words"
+                      placeholderTextColor={colors.textSecondary}
+                      editable={!loading}
+                    />
+                  </View>
+                  
+                  <View style={[styles.inputContainer, styles.nameInputContainer]}>
+                    <MaterialIcons name="person" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.input, { 
+                        backgroundColor: colors.backgroundSecondary,
+                        borderColor: colors.border,
+                        color: colors.text
+                      }]}
+                      placeholder="Nom"
+                      value={formData.lastName}
+                      onChangeText={(text) => handleChange('lastName', text)}
+                      autoCapitalize="words"
+                      placeholderTextColor={colors.textSecondary}
+                      editable={!loading}
+                    />
+                  </View>
+                </View>
+                
+                <View style={styles.inputContainer}>
+                  <MaterialIcons name="email" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, { 
+                      backgroundColor: colors.backgroundSecondary,
+                      borderColor: colors.border,
+                      color: colors.text
+                    }]}
+                    placeholder="Adresse email"
+                    value={formData.email}
+                    onChangeText={(text) => handleChange('email', text)}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    autoComplete="email"
+                    placeholderTextColor={colors.textSecondary}
+                    editable={!loading}
+                  />
+                </View>
+                
+                <View style={styles.inputContainer}>
+                  <MaterialIcons name="lock" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, styles.passwordInput, { 
+                      backgroundColor: colors.backgroundSecondary,
+                      borderColor: colors.border,
+                      color: colors.text
+                    }]}
+                    placeholder="Mot de passe"
+                    value={formData.password}
+                    onChangeText={(text) => handleChange('password', text)}
+                    secureTextEntry={!isPasswordVisible}
+                    autoComplete="new-password"
+                    placeholderTextColor={colors.textSecondary}
+                    editable={!loading}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setIsPasswordVisible(!isPasswordVisible)}
+                  >
+                    <MaterialIcons
+                      name={isPasswordVisible ? "visibility" : "visibility-off"}
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.inputContainer}>
+                  <MaterialIcons name="lock" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, styles.passwordInput, { 
+                      backgroundColor: colors.backgroundSecondary,
+                      borderColor: colors.border,
+                      color: colors.text
+                    }]}
+                    placeholder="Confirmer le mot de passe"
+                    value={formData.confirmPassword}
+                    onChangeText={(text) => handleChange('confirmPassword', text)}
+                    secureTextEntry={!isConfirmPasswordVisible}
+                    autoComplete="new-password"
+                    placeholderTextColor={colors.textSecondary}
+                    editable={!loading}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setIsConfirmPasswordVisible(!isConfirmPasswordVisible)}
+                  >
+                    <MaterialIcons
+                      name={isConfirmPasswordVisible ? "visibility" : "visibility-off"}
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+                
+                <TouchableOpacity 
+                  style={[
+                    styles.button, 
+                    { backgroundColor: colors.purple.primary },
+                    loading && styles.buttonDisabled
+                  ]}
+                  onPress={handleSignUp}
+                  disabled={loading}
+                  activeOpacity={0.9}
+                >
+                  {loading ? (
+                    <View style={styles.loadingContainer}>
+                      <Text style={styles.buttonText}>Création du compte...</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.buttonText}>Créer le compte</Text>
+                  )}
+                </TouchableOpacity>
+                
+                <View style={[styles.termsContainer, { 
+                  backgroundColor: colors.backgroundSecondary,
+                  borderColor: colors.border
+                }]}>
+                  <Text style={[styles.termsText, { color: colors.textSecondary }]}>
+                    En créant un compte, vous acceptez nos{' '}
+                    <Text style={[styles.link, { color: colors.purple.primary }]}>Conditions d'utilisation</Text> et{' '}
+                    <Text style={[styles.link, { color: colors.purple.primary }]}>Politique de confidentialité</Text>
+                  </Text>
+                </View>
+              </View>
+            </View>
+            
+            {/* Footer Section */}
+            <View style={styles.footer}>
+              <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+                Vous avez déjà un compte ?{' '}
+                <AppLink href={`/${ROUTES.SIGN_IN}`}>
+                  <Text style={[styles.footerLink, { color: colors.purple.primary }]}>Se connecter</Text>
+                </AppLink>
+              </Text>
+            </View>
           </View>
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={formData.email}
-            onChangeText={(text) => handleChange('email', text)}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoComplete="email"
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            value={formData.password}
-            onChangeText={(text) => handleChange('password', text)}
-            secureTextEntry
-            autoComplete="new-password"
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm Password"
-            value={formData.confirmPassword}
-            onChangeText={(text) => handleChange('confirmPassword', text)}
-            secureTextEntry
-            autoComplete="new-password"
-          />
-          
-          <TouchableOpacity 
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleSignUp}
-            disabled={loading}
-          >
-            <Text style={styles.buttonText}>
-              {loading ? 'Creating Account...' : 'Create Account'}
-            </Text>
-          </TouchableOpacity>
-          
-          <View style={styles.termsContainer}>
-            <Text style={styles.termsText}>
-              By creating an account, you agree to our{' '}
-              <Text style={styles.link}>Terms of Service</Text> and{' '}
-              <Text style={styles.link}>Privacy Policy</Text>
-            </Text>
-          </View>
-          
-          <View style={styles.loginContainer}>
-            <AppLink href={`/${ROUTES.SIGN_IN}`}>
-              Already have an account? Sign In
-            </AppLink>
-          </View>
-        </View>
-      </View>
-    </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
+    paddingBottom: 20,
   },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    padding: 20,
+    paddingHorizontal: 24,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    paddingBottom: 20,
+    alignItems: 'center',
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 30,
   },
-  logo: {
-    width: 80,
-    height: 80,
-    marginBottom: 16,
+  logoWrapper: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#8B5CF6',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '700',
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
-    marginBottom: 10,
+    textAlign: 'center',
+    lineHeight: 24,
+    maxWidth: 280,
+  },
+  formContainer: {
+    flex: 1,
+    paddingVertical: 10,
   },
   form: {
     width: '100%',
   },
-  nameContainer: {
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+  },
+  error: {
+    fontSize: 14,
+    marginLeft: 8,
+    flex: 1,
+  },
+  nameRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    marginBottom: 20,
+  },
+  inputContainer: {
+    position: 'relative',
+    marginBottom: 20,
+  },
+  nameInputContainer: {
+    width: '48%',
+    marginBottom: 0,
+  },
+  inputIcon: {
+    position: 'absolute',
+    left: 16,
+    top: 18,
+    zIndex: 1,
   },
   input: {
-    backgroundColor: '#f5f5f5',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 15,
+    borderWidth: 1.5,
+    paddingLeft: 48,
+    paddingRight: 16,
+    paddingVertical: 16,
+    borderRadius: 12,
     fontSize: 16,
+    fontWeight: '500',
   },
-  nameInput: {
-    width: '48%',
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 16,
+    top: 18,
   },
   button: {
-    backgroundColor: '#0066cc',
-    padding: 15,
-    borderRadius: 8,
+    paddingVertical: 18,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 8,
+    shadowColor: '#8B5CF6',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   buttonDisabled: {
-    backgroundColor: '#99c2ff',
+    backgroundColor: '#6B7280',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   buttonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   termsContainer: {
     marginTop: 20,
-    padding: 10,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   termsText: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 13,
     textAlign: 'center',
+    lineHeight: 18,
   },
   link: {
-    color: '#0066cc',
-    textDecorationLine: 'underline',
-  },
-  loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 20,
-  },
-  loginText: {
-    color: '#666',
-  },
-  loginLink: {
-    color: '#0066cc',
     fontWeight: '600',
   },
-  error: {
-    color: '#ff3b30',
-    marginBottom: 15,
+  footer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+  },
+  footerText: {
+    fontSize: 15,
     textAlign: 'center',
+  },
+  footerLink: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

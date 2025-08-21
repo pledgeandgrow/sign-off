@@ -89,6 +89,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const router = useRouter();
 
+  // Simple email validation for development mode
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
@@ -96,7 +102,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Find user by email and password
+      // DEVELOPMENT MODE: Allow login with any valid email format
+      if (__DEV__) {
+        if (!isValidEmail(email)) {
+          throw new Error('Please enter a valid email address');
+        }
+        
+        // Create a mock user for development
+        const userData = {
+          id: `dev-user-${Date.now()}`,
+          email: email,
+          firstName: 'Dev',
+          lastName: 'User',
+        };
+        
+        // Save user to state and storage
+        setUser(userData);
+        await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
+        
+        // Redirect to home
+        router.replace('/(tabs)');
+        return;
+      }
+      
+      // PRODUCTION MODE: Use actual authentication
       const user = MOCK_USERS.find(
         u => u.email === email && u.password === password
       );

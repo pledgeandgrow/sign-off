@@ -3,15 +3,21 @@ import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 // Tab bar background component
 const TabBarBackground = () => {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
+  
   return (
     <View 
       style={{
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: '#fff',
-        borderTopWidth: 0,
+        backgroundColor: colors.backgroundSecondary,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255, 255, 255, 0.1)',
       }}
     />
   );
@@ -30,16 +36,16 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#000',
+    backgroundColor: '#8B5CF6',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-    borderWidth: 3,
-    borderColor: '#fff',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   tabBarItem: {
     flex: 1,
@@ -47,7 +53,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   activeTab: {
-    backgroundColor: '#000',
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
   },
   tabLabel: {
     fontSize: 12,
@@ -57,10 +63,12 @@ const styles = StyleSheet.create({
 
 export default function TabLayout() {
   const isIOS = Platform.OS === 'ios';
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
 
   const tabBarOptions = {
-    tabBarActiveTintColor: '#000',
-    tabBarInactiveTintColor: '#999',
+    tabBarActiveTintColor: colors.purple.primary,
+    tabBarInactiveTintColor: colors.textSecondary,
     headerShown: false,
     tabBarButton: HapticTab,
     tabBarBackground: () => <TabBarBackground />,
@@ -68,9 +76,9 @@ export default function TabLayout() {
       position: 'absolute',
       height: isIOS ? 90 : 80,
       borderTopWidth: 0,
-      backgroundColor: '#fff',
+      backgroundColor: colors.backgroundSecondary,
       elevation: 0,
-      shadowOpacity: 0.1,
+      shadowOpacity: 0.2,
       left: 0,
       right: 0,
       bottom: 0,
@@ -80,19 +88,20 @@ export default function TabLayout() {
       borderTopRightRadius: 20,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: -2 },
-      shadowRadius: 4,
+      shadowRadius: 8,
     },
     tabBarItemStyle: {
       paddingVertical: 8,
       height: '100%',
       justifyContent: 'center',
       paddingBottom: Platform.OS === 'ios' ? 20 : 8,
-      borderRadius: 10,
-      marginHorizontal: 4,
+      borderRadius: 12,
+      marginHorizontal: 2,
       marginBottom: 4,
       backgroundColor: 'transparent',
+      overflow: 'hidden',
     },
-    tabBarActiveBackgroundColor: 'transparent',
+    tabBarActiveBackgroundColor: 'rgba(139, 92, 246, 0.15)',
     tabBarInactiveBackgroundColor: 'transparent',
     tabBarHideOnKeyboard: true,
   } as const;
@@ -102,18 +111,28 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="home" size={24} color={color} />
+          title: 'Accueil',
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialIcons 
+              name="home" 
+              size={24} 
+              color={color}
+              style={{ opacity: focused ? 1 : 0.7 }}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="vaults"
         options={{
-          title: 'Vault',
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="lock" size={24} color={color} />
+          title: 'Coffres-forts',
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialIcons 
+              name="lock" 
+              size={24} 
+              color={color}
+              style={{ opacity: focused ? 1 : 0.7 }}
+            />
           ),
           headerShown: false,
         }}
@@ -121,12 +140,13 @@ export default function TabLayout() {
       <Tabs.Screen
         name="sign-off"
         options={{
-          title: 'Sign-Off',
+          title: 'Sign-off',
           tabBarButton: (props) => (
             <View style={styles.tabBarCenterContainer}>
               <TouchableOpacity
                 style={styles.signOffButton}
                 onPress={props.onPress}
+                activeOpacity={0.8}
               >
                 <MaterialIcons name="power-settings-new" size={28} color="white" />
               </TouchableOpacity>
@@ -137,18 +157,28 @@ export default function TabLayout() {
       <Tabs.Screen
         name="heirs"
         options={{
-          title: 'Heirs',
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="account-group" size={24} color={color} />
+          title: 'Héritiers',
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialCommunityIcons 
+              name="account-group" 
+              size={24} 
+              color={color}
+              style={{ opacity: focused ? 1 : 0.7 }}
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="person" size={24} color={color} />
+          title: 'Profil',
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialIcons 
+              name="person" 
+              size={24} 
+              color={color}
+              style={{ opacity: focused ? 1 : 0.7 }}
+            />
           ),
         }}
       />

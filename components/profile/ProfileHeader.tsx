@@ -12,8 +12,8 @@ import {
   TouchableWithoutFeedback
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-
-import { useTheme } from '@/contexts/ThemeContext';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 import { Text } from '@/components/ui/Text';
 
 interface ProfileHeaderProps {
@@ -75,7 +75,9 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   renderCustomEditButton,
   testID = 'profile-header',
 }) => {
-  const { theme } = useTheme();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
+  
   const scaleValue = useRef(new Animated.Value(1)).current;
   const opacityValue = useRef(new Animated.Value(1)).current;
   
@@ -144,7 +146,8 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             width: avatarSize, 
             height: avatarSize, 
             borderRadius: avatarSize / 2,
-            backgroundColor: `${theme.colors.primary}20`,
+            backgroundColor: 'rgba(139, 92, 246, 0.2)',
+            borderColor: colors.purple.primary,
           },
           avatarStyle,
         ]}
@@ -153,7 +156,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           style={[
             styles.avatarText, 
             { 
-              color: theme.colors.text,
+              color: colors.purple.primary,
               fontSize: avatarSize * 0.3,
             }
           ]}
@@ -207,9 +210,9 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             width: editButtonSize,
             height: editButtonSize,
             borderRadius: editButtonSize / 2,
-            backgroundColor: theme.colors.background,
-            borderColor: theme.colors.border,
-            shadowColor: theme.colors.text,
+            backgroundColor: colors.purple.primary,
+            borderColor: colors.purple.primary,
+            shadowColor: colors.purple.primary,
             ...editButtonPosition,
           },
           editButtonStyle,
@@ -244,7 +247,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           style={[
             styles.name, 
             { 
-              color: '#000000',
+              color: colors.text,
             },
             nameStyle,
           ]}
@@ -254,7 +257,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           ellipsizeMode="tail"
           testID="profile-name"
         >
-          {name || 'User'}
+          {name || 'Utilisateur'}
         </Text>
         
         {showEmail && email && (
@@ -262,7 +265,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             <MaterialIcons 
               name="email" 
               size={16} 
-              color="#000000" 
+              color={colors.textSecondary} 
               style={styles.emailIcon}
               testID="email-icon"
             />
@@ -270,8 +273,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               style={[
                 styles.email, 
                 { 
-                  color: '#000000',
-                  opacity: 0.9,
+                  color: colors.textSecondary,
                 },
                 emailStyle,
               ]}
@@ -293,7 +295,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
       <View 
         style={[
           styles.loadingContainer, 
-          { backgroundColor: theme.colors.primary },
+          { backgroundColor: colors.backgroundSecondary },
           style,
         ]}
         testID="loading-container"
@@ -306,7 +308,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                 width: avatarSize, 
                 height: avatarSize, 
                 borderRadius: avatarSize / 2,
-                backgroundColor: theme.colors.gray200,
+                backgroundColor: colors.backgroundTertiary,
               }
             ]} 
           />
@@ -315,7 +317,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               style={[
                 styles.loadingText, 
                 { 
-                  backgroundColor: theme.colors.gray200,
+                  backgroundColor: colors.backgroundTertiary,
                   width: 120,
                   marginBottom: 8
                 }
@@ -325,7 +327,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               style={[
                 styles.loadingText, 
                 { 
-                  backgroundColor: theme.colors.gray200,
+                  backgroundColor: colors.backgroundTertiary,
                   width: 160,
                   opacity: 0.7
                 }
@@ -337,8 +339,6 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
     );
   }
 
-  // Gradient props are now handled inline where needed
-
   return (
     <View style={[styles.container, style]} testID={testID}>
       {renderContent()}
@@ -346,16 +346,11 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   );
 }
 
-
-
 const styles = StyleSheet.create({
   container: {
     padding: 24,
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
+    borderRadius: 16,
     alignItems: 'center',
-    margin: 16,
-    marginBottom: 8,
   },
   content: {
     alignItems: 'center',
@@ -370,13 +365,12 @@ const styles = StyleSheet.create({
   },
   avatarImage: {
     borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(139, 92, 246, 0.3)',
   },
   avatarFallback: {
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.2)',
   },
   avatarText: {
     fontWeight: '600',
@@ -390,12 +384,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   textContainer: {
     alignItems: 'center',
@@ -404,14 +397,7 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 22,
     fontWeight: '600',
-    color: '#000000',
     marginTop: 16,
-    textAlign: 'center',
-  },
-  emailText: {
-    fontSize: 14,
-    color: '#666666',
-    marginTop: 4,
     textAlign: 'center',
   },
   emailContainer: {

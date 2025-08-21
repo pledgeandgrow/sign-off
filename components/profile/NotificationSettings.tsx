@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Switch, Alert } from 'react-native';
+import { View, StyleSheet, Switch, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { MaterialIcons } from '@expo/vector-icons';
 
 import { Button } from '../ui/Button';
 import { Text } from '../ui/Text';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 interface NotificationSettingsProps {
   onBack: () => void;
 }
 
 export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onBack }) => {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
+  
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
+  const [smsNotifications, setSmsNotifications] = useState(false);
   const [loading, setLoading] = useState(false);
   // Use the auth context if needed in the future
   // const { user } = useAuth();
@@ -39,15 +46,15 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onBa
       
       if (status !== 'granted') {
         Alert.alert(
-          'Permission Required',
-          'Please enable notifications in your device settings to receive important updates.',
+          'Permission requise',
+          'Veuillez activer les notifications dans les paramètres de votre appareil pour recevoir des mises à jour importantes.',
           [
             {
-              text: 'Cancel',
+              text: 'Annuler',
               style: 'cancel',
             },
             {
-              text: 'Open Settings',
+              text: 'Ouvrir les paramètres',
               onPress: () => {
                 // Open app settings
                 // Linking.openSettings();
@@ -58,7 +65,7 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onBa
       }
     } catch (error) {
       console.error('Error requesting notification permission:', error);
-      Alert.alert('Error', 'Failed to update notification settings');
+      Alert.alert('Erreur', 'Échec de la mise à jour des paramètres de notification');
     } finally {
       setLoading(false);
     }
@@ -71,95 +78,271 @@ export const NotificationSettings: React.FC<NotificationSettingsProps> = ({ onBa
       // await updateUserSettings({ emailNotifications: value });
     } catch (error) {
       console.error('Error updating email notification preference:', error);
-      Alert.alert('Error', 'Failed to update notification settings');
+      Alert.alert('Erreur', 'Échec de la mise à jour des paramètres de notification');
       setEmailNotifications(!value); // Revert on error
     }
   };
 
+  const toggleSmsNotifications = async (value: boolean) => {
+    try {
+      setSmsNotifications(value);
+      // Update user's SMS notification preference in your backend
+      // await updateUserSettings({ smsNotifications: value });
+    } catch (error) {
+      console.error('Error updating SMS notification preference:', error);
+      Alert.alert('Erreur', 'Échec de la mise à jour des paramètres de notification');
+      setSmsNotifications(!value); // Revert on error
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      <View style={styles.settingItem}>
-        <View>
-          <Text style={styles.settingTitle}>Push Notifications</Text>
-          <Text style={styles.settingDescription}>
-            Receive important updates and reminders
+    <ScrollView 
+      style={[styles.container, { backgroundColor: colors.background }]}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <MaterialIcons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Notifications</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      {/* Notification Options */}
+      <View style={styles.content}>
+        {/* Push Notifications */}
+        <View style={[styles.settingCard, { 
+          backgroundColor: colors.backgroundSecondary,
+          borderColor: colors.border
+        }]}>
+          <View style={styles.settingHeader}>
+            <View style={[styles.iconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+              <MaterialIcons name="notifications" size={24} color={colors.purple.primary} />
+            </View>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingTitle, { color: colors.text }]}>
+                Notifications push
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Recevez des mises à jour importantes et des rappels
+              </Text>
+            </View>
+          </View>
+          <Switch
+            value={notificationsEnabled}
+            onValueChange={requestNotificationPermission}
+            disabled={loading}
+            trackColor={{ false: colors.border, true: colors.purple.primary }}
+            thumbColor="white"
+          />
+        </View>
+
+        {/* Email Notifications */}
+        <View style={[styles.settingCard, { 
+          backgroundColor: colors.backgroundSecondary,
+          borderColor: colors.border
+        }]}>
+          <View style={styles.settingHeader}>
+            <View style={[styles.iconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+              <MaterialIcons name="email" size={24} color={colors.purple.primary} />
+            </View>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingTitle, { color: colors.text }]}>
+                Notifications par email
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Recevez des mises à jour par email concernant votre compte
+              </Text>
+            </View>
+          </View>
+          <Switch
+            value={emailNotifications}
+            onValueChange={toggleEmailNotifications}
+            trackColor={{ false: colors.border, true: colors.purple.primary }}
+            thumbColor="white"
+          />
+        </View>
+
+        {/* SMS Notifications */}
+        <View style={[styles.settingCard, { 
+          backgroundColor: colors.backgroundSecondary,
+          borderColor: colors.border
+        }]}>
+          <View style={styles.settingHeader}>
+            <View style={[styles.iconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+              <MaterialIcons name="sms" size={24} color={colors.purple.primary} />
+            </View>
+            <View style={styles.settingInfo}>
+              <Text style={[styles.settingTitle, { color: colors.text }]}>
+                Notifications par SMS
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Recevez des alertes importantes par SMS
+              </Text>
+            </View>
+          </View>
+          <Switch
+            value={smsNotifications}
+            onValueChange={toggleSmsNotifications}
+            trackColor={{ false: colors.border, true: colors.purple.primary }}
+            thumbColor="white"
+          />
+        </View>
+
+        {/* Notification Types */}
+        <View style={[styles.sectionCard, { 
+          backgroundColor: colors.backgroundSecondary,
+          borderColor: colors.border
+        }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Types de notifications</Text>
+          
+          <View style={styles.notificationType}>
+            <View style={styles.typeInfo}>
+              <MaterialIcons name="security" size={20} color={colors.purple.primary} />
+              <Text style={[styles.typeText, { color: colors.text }]}>Alertes de sécurité</Text>
+            </View>
+            <Switch
+              value={true}
+              trackColor={{ false: colors.border, true: colors.purple.primary }}
+              thumbColor="white"
+            />
+          </View>
+
+          <View style={styles.notificationType}>
+            <View style={styles.typeInfo}>
+              <MaterialIcons name="schedule" size={20} color={colors.purple.primary} />
+              <Text style={[styles.typeText, { color: colors.text }]}>Rappels et échéances</Text>
+            </View>
+            <Switch
+              value={true}
+              trackColor={{ false: colors.border, true: colors.purple.primary }}
+              thumbColor="white"
+            />
+          </View>
+
+          <View style={styles.notificationType}>
+            <View style={styles.typeInfo}>
+              <MaterialIcons name="update" size={20} color={colors.purple.primary} />
+              <Text style={[styles.typeText, { color: colors.text }]}>Mises à jour du système</Text>
+            </View>
+            <Switch
+              value={false}
+              trackColor={{ false: colors.border, true: colors.purple.primary }}
+              thumbColor="white"
+            />
+          </View>
+        </View>
+
+        {/* Info Card */}
+        <View style={[styles.infoCard, { 
+          backgroundColor: 'rgba(139, 92, 246, 0.1)',
+          borderColor: 'rgba(139, 92, 246, 0.2)'
+        }]}>
+          <MaterialIcons name="info" size={20} color={colors.purple.primary} />
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+            Vous pouvez gérer vos préférences de notification dans les paramètres de votre appareil à tout moment.
           </Text>
         </View>
-        <Switch
-          value={notificationsEnabled}
-          onValueChange={requestNotificationPermission}
-          disabled={loading}
-          trackColor={{ false: '#e0e0e0', true: '#000' }}
-          thumbColor="white"
-        />
       </View>
-
-      <View style={styles.settingItem}>
-        <View>
-          <Text style={styles.settingTitle}>Email Notifications</Text>
-          <Text style={styles.settingDescription}>
-            Receive email updates about your account
-          </Text>
-        </View>
-        <Switch
-          value={emailNotifications}
-          onValueChange={toggleEmailNotifications}
-          trackColor={{ false: '#e0e0e0', true: '#000' }}
-          thumbColor="white"
-        />
-      </View>
-
-      <View style={styles.note}>
-        <Text style={styles.noteText}>
-          You can manage your notification preferences in your device settings at any time.
-        </Text>
-      </View>
-
-      <View style={styles.buttonContainer}>
-        <Button onPress={onBack} variant="outline">
-          Back to Profile
-        </Button>
-      </View>
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
     flex: 1,
   },
-  settingItem: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'transparent', // Ensure it's transparent to allow background color to show
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    flex: 1,
+  },
+  placeholder: {
+    width: 40, // Adjust as needed for spacing
+  },
+  content: {
+    padding: 16,
+  },
+  settingCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+  },
+  settingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  settingInfo: {
+    flex: 1,
   },
   settingTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    color: 'black',
     marginBottom: 4,
   },
   settingDescription: {
     fontSize: 14,
     color: '#666',
-    maxWidth: '80%',
   },
-  note: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
+  sectionCard: {
+    borderRadius: 12,
     padding: 16,
-    marginTop: 24,
+    marginBottom: 16,
+    borderWidth: 1,
   },
-  noteText: {
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  notificationType: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  typeInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  typeText: {
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  infoCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  infoText: {
     fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-  buttonContainer: {
-    marginTop: 24,
+    marginLeft: 8,
+    flex: 1,
   },
 });

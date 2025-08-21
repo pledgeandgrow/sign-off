@@ -12,7 +12,8 @@ import {
   SwitchProps
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useTheme } from '@/contexts/ThemeContext';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 import { Text } from '@/components/ui/Text';
 
 interface ProfileMenuItemProps {
@@ -44,7 +45,9 @@ export const ProfileMenuItem: React.FC<ProfileMenuItemProps> = ({
   containerStyle,
   switchProps,
 }) => {
-  const { theme } = useTheme();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
+  
   const scaleValue = useRef(new Animated.Value(1)).current;
   const isRTL = I18nManager.isRTL;
 
@@ -76,8 +79,8 @@ export const ProfileMenuItem: React.FC<ProfileMenuItemProps> = ({
         style={[
           styles.container,
           { 
-            backgroundColor: '#ffffff',
-            borderBottomColor: '#f0f0f0',
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            borderBottomColor: 'rgba(255, 255, 255, 0.1)',
           },
           containerStyle,
         ]}
@@ -93,22 +96,22 @@ export const ProfileMenuItem: React.FC<ProfileMenuItemProps> = ({
             style={[
               styles.iconContainer, 
               { 
-                backgroundColor: '#000000',
-                borderRadius: 8,
+                backgroundColor: iconColor || colors.purple.primary,
+                borderRadius: 12,
               }
             ]}
           >
             <MaterialIcons 
               name={icon as any} 
               size={22} 
-              color="#ffffff"
+              color="#FFFFFF"
               style={{ opacity: 0.9 }}
             />
           </View>
           <Text 
             style={[
               styles.label, 
-              { color: '#000000' },
+              { color: colors.text },
               labelStyle
             ]}
             numberOfLines={1}
@@ -124,7 +127,7 @@ export const ProfileMenuItem: React.FC<ProfileMenuItemProps> = ({
             <MaterialIcons 
               name={isRTL ? 'chevron-left' : 'chevron-right'} 
               size={24} 
-              color={theme.colors.textSecondary}
+              color={colors.textSecondary}
               style={{ opacity: 0.5 }}
             />
           )}
@@ -133,11 +136,11 @@ export const ProfileMenuItem: React.FC<ProfileMenuItemProps> = ({
               value={value}
               onValueChange={onValueChange}
               trackColor={{ 
-                false: theme.colors.border, 
-                true: `${theme.colors.primary}80`,
+                false: colors.backgroundTertiary, 
+                true: `${colors.purple.primary}80`,
               }}
               thumbColor="white"
-              ios_backgroundColor={theme.colors.border}
+              ios_backgroundColor={colors.backgroundTertiary}
               {...switchProps}
             />
           )}
@@ -164,8 +167,8 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   iconContainer: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,

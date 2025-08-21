@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, StyleSheet, Alert, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { v4 as uuidv4 } from 'uuid';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ListHeirs, AddHeir, EditHeir } from '../../components/heirs';
 import type { Heir, HeirFormData } from '../../types/heir';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 const HEIRS_STORAGE_KEY = '@SignOff:heirs';
 
@@ -14,7 +16,9 @@ interface StoredHeir extends Omit<Heir, 'createdAt' | 'updatedAt'> {
 }
 
 export default function HeirsScreen() {
-  const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
+  
   const [heirs, setHeirs] = useState<Heir[]>([]);
   const [view, setView] = useState<'list' | 'add' | 'edit'>('list');
   const [currentHeir, setCurrentHeir] = useState<Heir | null>(null);
@@ -134,85 +138,22 @@ export default function HeirsScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       <View style={styles.content}>
         {renderContent()}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
-    padding: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-    paddingTop: 8,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: 'black',
   },
   content: {
     flex: 1,
-    paddingTop: 16,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 16,
-    lineHeight: 24,
-  },
-  placeholderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#F9F9FB',
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  placeholderText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#8E8E93',
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  placeholderSubtext: {
-    fontSize: 14,
-    color: '#C7C7CC',
-    marginTop: 8,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  addButton: {
-    backgroundColor: 'black',
-    padding: 10,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    height: 44,
-  },
-  addButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    marginLeft: 8,
+    padding: 20,
+    paddingBottom: 120, // Augmenté pour éviter que le contenu soit caché par la tab bar
   },
 });

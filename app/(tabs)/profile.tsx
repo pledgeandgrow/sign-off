@@ -6,13 +6,17 @@ import { Text } from '@/components/ui/Text';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert, ScrollView, StyleSheet, View, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 type ViewType = 'main' | 'edit-profile' | 'security' | 'notifications';
 
 export default function ProfileScreen() {
-  const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
+  
   const router = useRouter();
   const { user, signOut } = useAuth();
   const [currentView, setCurrentView] = useState<ViewType>('main');
@@ -20,12 +24,12 @@ export default function ProfileScreen() {
   const handleSignOut = async () => {
     try {
       Alert.alert(
-        'Sign Out',
-        'Are you sure you want to sign out?',
+        'Se déconnecter',
+        'Êtes-vous sûr de vouloir vous déconnecter ?',
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: 'Annuler', style: 'cancel' },
           {
-            text: 'Sign Out',
+            text: 'Se déconnecter',
             style: 'destructive',
             onPress: async () => {
               try {
@@ -33,7 +37,7 @@ export default function ProfileScreen() {
                 router.replace('/');
               } catch (error) {
                 console.error('Error signing out:', error);
-                Alert.alert('Error', 'Failed to sign out. Please try again.');
+                Alert.alert('Erreur', 'Échec de la déconnexion. Veuillez réessayer.');
               }
             },
           },
@@ -53,12 +57,12 @@ export default function ProfileScreen() {
   const fullName = user?.user_metadata?.full_name || 
     (user?.user_metadata?.first_name || user?.user_metadata?.last_name 
       ? `${user.user_metadata.first_name || ''} ${user.user_metadata.last_name || ''}`.trim() 
-      : 'User');
+      : 'Utilisateur');
   const email = user?.email || '';
 
   const renderMainView = () => (
     <>
-      <View style={styles.profileCard}>
+      <View style={[styles.profileCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
         <ProfileHeader 
           name={fullName} 
           email={email} 
@@ -66,19 +70,19 @@ export default function ProfileScreen() {
         />
       </View>
 
-      <ProfileSection title="Account">
+      <ProfileSection title="Compte">
         <ProfileMenuItem
-          icon="person-outline"
-          label="Personal Information"
+          icon="account"
+          label="Informations personnelles"
           onPress={handleEditProfile}
         />
         <ProfileMenuItem
-          icon="lock-outline"
-          label="Security"
+          icon="shield-check"
+          label="Sécurité"
           onPress={handleSecurityPress}
         />
         <ProfileMenuItem
-          icon="notifications-outline"
+          icon="bell"
           label="Notifications"
           onPress={handleNotificationPress}
         />
@@ -86,33 +90,35 @@ export default function ProfileScreen() {
 
       <ProfileSection title="Support">
         <ProfileMenuItem
-          icon="help-outline"
-          label="Help & Support"
+          icon="help-circle"
+          label="Aide & Support"
           onPress={() => console.log('Navigate to help')}
         />
         <ProfileMenuItem
-          icon="information-outline"
-          label="About SignOff"
+          icon="information"
+          label="À propos de Sign-off"
           onPress={() => console.log('Show about')}
         />
       </ProfileSection>
 
       <View style={styles.signOutButton}>
         <ProfileMenuItem
-          icon="power-settings-new"
-          label="Sign Out"
+          icon="logout"
+          label="Se déconnecter"
           onPress={handleSignOut}
-          labelStyle={{ color: '#FF3B30' }}
-          iconColor="#FF3B30"
+          labelStyle={{ color: colors.error }}
+          iconColor={colors.error}
         />
       </View>
     </>
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      
       <View style={styles.header}>
-        <Text style={styles.title}>Profile</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Profil</Text>
       </View>
       
       <ScrollView 
@@ -131,51 +137,45 @@ export default function ProfileScreen() {
           <NotificationSettings onBack={handleBack} />
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   header: {
-    padding: 16,
+    padding: 20,
     paddingBottom: 8,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingTop: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
-    color: '#000000',
   },
   scrollView: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   scrollViewContent: {
-    padding: 16,
-    paddingBottom: 24,
+    padding: 20,
+    paddingBottom: 120, // Augmenté pour éviter que le contenu soit caché par la tab bar
   },
   profileCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
   },
   section: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
   },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#000000',
     marginBottom: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.5,

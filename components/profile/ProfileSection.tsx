@@ -8,7 +8,8 @@ import {
   TouchableWithoutFeedback,
   ViewProps,
 } from 'react-native';
-import { useTheme } from '@/contexts/ThemeContext';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 import { Text } from '@/components/ui/Text';
 
 interface ProfileSectionProps {
@@ -34,7 +35,8 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
   headerRight,
   onHeaderPress,
 }) => {
-  const { theme } = useTheme();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
   
   const renderHeader = () => {
     if (!title && !headerRight) return null;
@@ -46,7 +48,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
             style={[
               styles.title,
               { 
-                color: '#000000',
+                color: colors.textSecondary,
               },
               titleStyle,
             ]}
@@ -90,7 +92,7 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
           child.props.style,
           !isLast && !hideSeparator && { 
             borderBottomWidth: StyleSheet.hairlineWidth,
-            borderBottomColor: theme.colors.border,
+            borderBottomColor: 'rgba(255, 255, 255, 0.1)',
           },
         ];
         
@@ -109,8 +111,8 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
       style={[
         styles.container, 
         { 
-          backgroundColor: '#ffffff',
-          borderColor: '#f0f0f0',
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
         },
         style,
       ]}
@@ -130,26 +132,24 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
+    marginBottom: 24,
+    borderRadius: 16,
     overflow: 'hidden',
-    marginHorizontal: 16,
+    borderWidth: 1,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 12,
     backgroundColor: 'transparent',
   },
   title: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#000000',
     marginBottom: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -158,9 +158,8 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   content: {
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#ffffff',
     paddingHorizontal: 0,
   }
 });
