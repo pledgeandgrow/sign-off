@@ -1,3 +1,3 @@
-export { ListHeirs } from './ListHeirs';
-export { AddHeir } from './AddHeir';
-export { EditHeir } from './EditHeir';
+export { HeirCard } from './HeirCard';
+export { HeirForm } from './HeirForm';
+export { HeirList } from './HeirList';

@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { VaultProvider } from '../contexts/VaultContext';
+import { OnboardingProvider, useOnboarding } from '../contexts/OnboardingContext';
 import { ROUTES } from './routes';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 
@@ -22,7 +23,8 @@ function LoadingScreen() {
 
 // This component handles the authentication state and routing
 function RootLayoutNav() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { hasCompletedOnboarding, loading: onboardingLoading } = useOnboarding();
   const router = useRouter();
   const pathname = usePathname();
   
@@ -33,21 +35,43 @@ function RootLayoutNav() {
     ROUTES.RECOVERY
   ].includes(pathname as any);
 
+  const isOnboardingRoute = pathname === '/onboarding';
+
   // Redirect to the appropriate screen based on authentication state
   useEffect(() => {
-    if (loading) return;
+    if (authLoading || onboardingLoading) return;
 
+    // Not authenticated - redirect to sign in
     if (!user && !isAuthRoute) {
-      // Redirect to the sign-in page if user is not authenticated
       router.replace(`/${ROUTES.SIGN_IN}` as any);
-    } else if (user && isAuthRoute) {
-      // Redirect to the app if user is authenticated and on an auth route
-      router.replace(ROUTES.HOME as any);
+      return;
     }
-  }, [user, loading, isAuthRoute, router]);
+
+    // Authenticated user
+    if (user) {
+      // Check if user hasn't completed onboarding
+      if (!hasCompletedOnboarding) {
+        // If not on onboarding route, redirect there
+        if (!isOnboardingRoute) {
+          console.log('🎓 Redirecting to onboarding...');
+          router.replace('/onboarding' as any);
+        }
+      } else {
+        // User has completed onboarding
+        if (isAuthRoute) {
+          // Coming from auth route (login/signup), go to home
+          console.log('✅ Onboarding completed, redirecting to home...');
+          router.replace(ROUTES.HOME as any);
+        } else if (isOnboardingRoute) {
+          // Shouldn't be on onboarding if already completed (unless manually accessed)
+          // Let them view it if they want
+        }
+      }
+    }
+  }, [user, authLoading, onboardingLoading, hasCompletedOnboarding, isAuthRoute, isOnboardingRoute, router, pathname]);
 
   // Show a loading indicator while checking auth state
-  if (loading) {
+  if (authLoading || onboardingLoading) {
     return <LoadingScreen />;
   }
 
@@ -68,6 +92,12 @@ function RootLayoutNav() {
       <Stack.Screen 
         name={ROUTES.RECOVERY} 
         options={{ title: 'Password Recovery' }} 
+      />
+      
+      {/* Onboarding route */}
+      <Stack.Screen 
+        name="onboarding" 
+        options={{ title: 'Welcome' }} 
       />
       
       {/* Protected routes */}
@@ -98,10 +128,12 @@ export default function RootLayout() {
     <ThemeProvider>
       <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <AuthProvider>
-          <VaultProvider>
-            <RootLayoutNav />
-            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-          </VaultProvider>
+          <OnboardingProvider>
+            <VaultProvider>
+              <RootLayoutNav />
+              <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+            </VaultProvider>
+          </OnboardingProvider>
         </AuthProvider>
       </NavThemeProvider>
     </ThemeProvider>

@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { Logo } from '../../components/ui/Logo';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -8,14 +8,15 @@ import { ROUTES } from '../../app/routes';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function SignUp() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
+  const { signUp } = useAuth();
   
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -31,13 +32,58 @@ export default function SignUp() {
       ...prev,
       [field]: value
     }));
+    // Clear error when user starts typing
+    if (error) setError('');
+  };
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePassword = (password: string) => {
+    // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
+    const hasMinLength = password.length >= 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    
+    return {
+      isValid: hasMinLength && hasUpperCase && hasLowerCase && hasNumber,
+      message: !hasMinLength ? 'Le mot de passe doit contenir au moins 8 caractères' :
+               !hasUpperCase ? 'Le mot de passe doit contenir au moins une majuscule' :
+               !hasLowerCase ? 'Le mot de passe doit contenir au moins une minuscule' :
+               !hasNumber ? 'Le mot de passe doit contenir au moins un chiffre' : ''
+    };
   };
 
   const handleSignUp = async () => {
-    const { firstName, lastName, email, password, confirmPassword } = formData;
+    const { fullName, email, password, confirmPassword } = formData;
     
-    if (!firstName || !lastName || !email || !password || !confirmPassword) {
-      setError('Veuillez remplir tous les champs');
+    // Validation
+    if (!fullName.trim()) {
+      setError('Veuillez entrer votre nom complet');
+      return;
+    }
+    
+    if (!email.trim()) {
+      setError('Veuillez entrer votre adresse email');
+      return;
+    }
+    
+    if (!validateEmail(email)) {
+      setError('Veuillez entrer une adresse email valide');
+      return;
+    }
+    
+    if (!password) {
+      setError('Veuillez entrer un mot de passe');
+      return;
+    }
+    
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.message);
       return;
     }
     
@@ -46,22 +92,25 @@ export default function SignUp() {
       return;
     }
     
-    if (password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères');
-      return;
-    }
-    
     setLoading(true);
     setError('');
     
     try {
-      // TODO: Implement actual registration
-      // For now, simulate a successful registration
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      // Navigate to email verification screen
-      router.replace(`/verify-email?email=${encodeURIComponent(email)}` as any);
-    } catch {
-      setError('Échec de la création du compte. Veuillez réessayer.');
+      await signUp({
+        email: email.trim(),
+        password,
+        fullName: fullName.trim(),
+      });
+      
+      // Show success message
+      Alert.alert(
+        'Compte créé!',
+        'Votre compte a été créé avec succès. Vérifiez votre email pour confirmer votre adresse.',
+        [{ text: 'OK', onPress: () => router.replace(ROUTES.HOME as any) }]
+      );
+    } catch (err: any) {
+      console.error('Sign up error:', err);
+      setError(err.message || 'Échec de la création du compte. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
@@ -104,40 +153,21 @@ export default function SignUp() {
                   </View>
                 ) : null}
                 
-                <View style={styles.nameRow}>
-                  <View style={[styles.inputContainer, styles.nameInputContainer]}>
-                    <MaterialIcons name="person" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.input, { 
-                        backgroundColor: colors.backgroundSecondary,
-                        borderColor: colors.border,
-                        color: colors.text
-                      }]}
-                      placeholder="Prénom"
-                      value={formData.firstName}
-                      onChangeText={(text) => handleChange('firstName', text)}
-                      autoCapitalize="words"
-                      placeholderTextColor={colors.textSecondary}
-                      editable={!loading}
-                    />
-                  </View>
-                  
-                  <View style={[styles.inputContainer, styles.nameInputContainer]}>
-                    <MaterialIcons name="person" size={20} color={colors.textSecondary} style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.input, { 
-                        backgroundColor: colors.backgroundSecondary,
-                        borderColor: colors.border,
-                        color: colors.text
-                      }]}
-                      placeholder="Nom"
-                      value={formData.lastName}
-                      onChangeText={(text) => handleChange('lastName', text)}
-                      autoCapitalize="words"
-                      placeholderTextColor={colors.textSecondary}
-                      editable={!loading}
-                    />
-                  </View>
+                <View style={styles.inputContainer}>
+                  <MaterialIcons name="person" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, { 
+                      backgroundColor: colors.backgroundSecondary,
+                      borderColor: colors.border,
+                      color: colors.text
+                    }]}
+                    placeholder="Nom complet"
+                    value={formData.fullName}
+                    onChangeText={(text) => handleChange('fullName', text)}
+                    autoCapitalize="words"
+                    placeholderTextColor={colors.textSecondary}
+                    editable={!loading}
+                  />
                 </View>
                 
                 <View style={styles.inputContainer}>

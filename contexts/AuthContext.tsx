@@ -1,155 +1,181 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { createUserProfile, updateUserActivity } from '@/lib/services/supabaseService';
+import { generateKeyPair, storePrivateKey, storePublicKey, deleteStoredKeys } from '@/lib/encryption';
+import type { User as DatabaseUser } from '@/types/database.types';
 
-// Storage key for auth state
-const AUTH_STORAGE_KEY = '@auth_user';
-
-// Hardcoded user data for development
-const MOCK_USERS = [
-  {
-    id: '1',
-    email: 'user@example.com',
-    password: 'password123',
-    firstName: 'John',
-    lastName: 'Doe',
-    emailVerified: true,
-  },
-  {
-    id: '2',
-    email: 'test@example.com',
-    password: 'test123',
-    firstName: 'Test',
-    lastName: 'User',
-    emailVerified: false,
-  },
-];
-
-interface UserMetadata {
-  full_name?: string;
-  avatar_url?: string;
-  [key: string]: any;
-}
-
-interface User {
+interface AppUser {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  emailVerified?: boolean;
-  user_metadata?: UserMetadata;
-  app_metadata?: {
-    provider?: string;
-    [key: string]: any;
-  };
-  created_at?: string;
-  updated_at?: string;
-  last_sign_in_at?: string;
+  full_name?: string;
+  avatar_url?: string;
+  public_key?: string;
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (userData: {
     email: string;
     password: string;
-    firstName: string;
-    lastName: string;
+    fullName: string;
   }) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  updateProfile: (updates: Partial<User>) => Promise<User>;
+  updateProfile: (updates: Partial<AppUser>) => Promise<AppUser>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Check if user is logged in on initial load
-  useEffect(() => {
-    const loadAuthState = async () => {
-      try {
-        const jsonValue = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
-        if (jsonValue) {
-          const user = JSON.parse(jsonValue);
-          setUser(user);
-        }
-      } catch (error) {
-        console.error('Failed to load auth state', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    loadAuthState();
-  }, []);
-
   const router = useRouter();
 
-  // Simple email validation for development mode
-  const isValidEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+  // Initialize auth state and listen for changes
+  useEffect(() => {
+    // Skip auth initialization during SSR
+    if (typeof (globalThis as any).window === 'undefined') {
+      setLoading(false);
+      return;
+    }
+
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadUserProfile(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    }).catch((error) => {
+      console.error('Error getting session:', error);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        loadUserProfile(session.user.id);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const loadUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error loading user profile:', error);
+        
+        // If user profile doesn't exist, try to create it
+        if (error.code === 'PGRST116') {
+          console.log('User profile not found, attempting to create...');
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          
+          if (authUser) {
+            try {
+              await createUserProfile(
+                authUser.id,
+                authUser.email || '',
+                authUser.user_metadata?.full_name
+              );
+              
+              // Retry loading the profile
+              const { data: newData, error: retryError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', userId)
+                .single();
+              
+              if (!retryError && newData) {
+                const userData = newData as any;
+                setUser({
+                  id: userData.id,
+                  email: userData.email,
+                  full_name: userData.full_name || undefined,
+                  avatar_url: userData.avatar_url || undefined,
+                  public_key: userData.public_key || undefined,
+                });
+                return;
+              }
+            } catch (createError) {
+              console.error('Failed to create user profile:', createError);
+            }
+          }
+        }
+        
+        // If we still don't have a profile, sign out
+        await supabase.auth.signOut();
+        throw error;
+      }
+
+      if (data) {
+        setUser({
+          id: data.id,
+          email: data.email,
+          full_name: data.full_name || undefined,
+          avatar_url: data.avatar_url || undefined,
+          public_key: data.public_key || undefined,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // DEVELOPMENT MODE: Allow login with any valid email format
-      if (__DEV__) {
-        if (!isValidEmail(email)) {
-          throw new Error('Please enter a valid email address');
+
+      if (!isSupabaseConfigured()) {
+        throw new Error('Supabase is not configured. Please add credentials to .env.local');
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        // Check if user profile exists
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        // If profile doesn't exist, create it
+        if (profileError && profileError.code === 'PGRST116') {
+          console.log('Creating missing user profile...');
+          await createUserProfile(
+            data.user.id,
+            data.user.email || '',
+            data.user.user_metadata?.full_name
+          );
         }
-        
-        // Create a mock user for development
-        const userData = {
-          id: `dev-user-${Date.now()}`,
-          email: email,
-          firstName: 'Dev',
-          lastName: 'User',
-        };
-        
-        // Save user to state and storage
-        setUser(userData);
-        await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
-        
-        // Redirect to home
-        router.replace('/(tabs)');
-        return;
+
+        await updateUserActivity(data.user.id);
+        // Don't navigate here - let the auth state change handler do it
       }
-      
-      // PRODUCTION MODE: Use actual authentication
-      const user = MOCK_USERS.find(
-        u => u.email === email && u.password === password
-      );
-      
-      if (!user) {
-        throw new Error('Invalid email or password');
-      }
-      
-      const userData = {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-      };
-      
-      // Save user to state and storage
-      setUser(userData);
-      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userData));
-      
-      // Redirect to home
-      router.replace('/(tabs)');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sign in failed:', error);
-      throw new Error('Failed to sign in. Please check your credentials.');
+      throw new Error(error.message || 'Failed to sign in. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -158,27 +184,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (userData: {
     email: string;
     password: string;
-    firstName: string;
-    lastName: string;
+    fullName: string;
   }) => {
     try {
       setLoading(true);
-      // TODO: Implement actual sign-up with your auth provider
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Simulate successful registration
-      const newUser: User = {
-        id: `user-${Date.now()}`,
+
+      if (!isSupabaseConfigured()) {
+        throw new Error('Supabase is not configured. Please add credentials to .env.local');
+      }
+
+      // Sign up with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
         email: userData.email,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-      };
-      
-      setUser(newUser);
-      router.replace('/(tabs)');
-    } catch (error) {
+        password: userData.password,
+        options: {
+          data: {
+            full_name: userData.fullName,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        console.log('📝 Generating encryption keys...');
+        // Generate encryption keys
+        const { publicKey, privateKey } = await generateKeyPair();
+        
+        console.log('💾 Storing keys securely...');
+        // Store keys securely on device
+        await storePrivateKey(privateKey);
+        await storePublicKey(publicKey);
+
+        console.log('👤 Updating user profile with public key...');
+        // User profile is auto-created by database trigger
+        // Just update with the generated public key and full name
+        await supabase
+          .from('users')
+          .update({ 
+            public_key: publicKey,
+            full_name: userData.fullName 
+          })
+          .eq('id', data.user.id);
+
+        console.log('✅ User registered successfully');
+        // Don't navigate here - let the auth state change handler in _layout.tsx handle routing
+      }
+    } catch (error: any) {
       console.error('Sign up failed:', error);
-      throw new Error('Failed to create account. Please try again.');
+      throw new Error(error.message || 'Failed to create account. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -187,18 +241,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true);
-      // Simulate sign out delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Clear user from state and storage
+
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      // Clear stored keys
+      await deleteStoredKeys();
+
+      // Clear user state
       setUser(null);
-      await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
-      
+
       // Redirect to sign-in
       router.replace('/(auth)/sign-in' as any);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sign out failed:', error);
-      throw new Error('Failed to sign out. Please try again.');
+      throw new Error(error.message || 'Failed to sign out. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -207,47 +265,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const resetPassword = async (email: string) => {
     try {
       setLoading(true);
-      
-      // Check if user exists
-      const userExists = MOCK_USERS.some(u => u.email === email);
-      
-      // Simulate sending reset email (even if user doesn't exist for security)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (userExists) {
-        console.log(`Password reset email sent to ${email} (simulated)`);
-      } else {
-        // Don't reveal that the email doesn't exist for security reasons
-        console.log('If an account exists with this email, a password reset link has been sent');
+
+      if (!isSupabaseConfigured()) {
+        throw new Error('Supabase is not configured');
       }
-    } catch (error) {
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'signoff://reset-password',
+      });
+
+      if (error) throw error;
+
+      console.log('✅ Password reset email sent');
+    } catch (error: any) {
       console.error('Password reset failed:', error);
-      throw new Error('Failed to send password reset email. Please try again.');
+      throw new Error(error.message || 'Failed to send password reset email.');
     } finally {
       setLoading(false);
     }
   };
 
-  const updateProfile = async (updates: Partial<User>): Promise<User> => {
+  const updateProfile = async (updates: Partial<AppUser>): Promise<AppUser> => {
     try {
       if (!user) {
         throw new Error('No user is currently signed in');
       }
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Update user data
-      const updatedUser = { ...user, ...updates };
-      
-      // Save updated user to state and storage
+
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          full_name: updates.full_name,
+          avatar_url: updates.avatar_url,
+        })
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const updatedUser: AppUser = {
+        id: data.id,
+        email: data.email,
+        full_name: data.full_name || undefined,
+        avatar_url: data.avatar_url || undefined,
+        public_key: data.public_key || undefined,
+      };
+
       setUser(updatedUser);
-      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updatedUser));
-      
       return updatedUser;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Update profile failed:', error);
-      throw new Error('Failed to update profile. Please try again.');
+      throw new Error(error.message || 'Failed to update profile.');
     }
   };
 

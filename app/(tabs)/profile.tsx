@@ -4,6 +4,7 @@ import { NotificationSettings } from '@/components/profile/NotificationSettings'
 import { SecuritySettings } from '@/components/profile/SecuritySettings';
 import { Text } from '@/components/ui/Text';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOnboarding } from '@/contexts/OnboardingContext';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View, StatusBar } from 'react-native';
@@ -19,6 +20,7 @@ export default function ProfileScreen() {
   
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const { resetOnboarding } = useOnboarding();
   const [currentView, setCurrentView] = useState<ViewType>('main');
 
   const handleSignOut = async () => {
@@ -54,11 +56,18 @@ export default function ProfileScreen() {
   const handleNotificationPress = () => setCurrentView('notifications');
   const handleBack = () => setCurrentView('main');
 
-  const fullName = user?.user_metadata?.full_name || 
-    (user?.user_metadata?.first_name || user?.user_metadata?.last_name 
-      ? `${user.user_metadata.first_name || ''} ${user.user_metadata.last_name || ''}`.trim() 
-      : 'Utilisateur');
+  const fullName = user?.full_name || 'Utilisateur';
   const email = user?.email || '';
+
+  const handleViewOnboarding = async () => {
+    try {
+      await resetOnboarding();
+      router.push('/onboarding' as any);
+    } catch (error) {
+      console.error('Error resetting onboarding:', error);
+      Alert.alert('Erreur', 'Impossible de réinitialiser l\'introduction.');
+    }
+  };
 
   const renderMainView = () => (
     <>
@@ -93,6 +102,11 @@ export default function ProfileScreen() {
           icon="help-circle"
           label="Aide & Support"
           onPress={() => console.log('Navigate to help')}
+        />
+        <ProfileMenuItem
+          icon="school"
+          label="Revoir l'introduction"
+          onPress={handleViewOnboarding}
         />
         <ProfileMenuItem
           icon="information"

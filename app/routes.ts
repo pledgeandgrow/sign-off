@@ -9,6 +9,12 @@ export const ROUTES = {
   HOME: '/(tabs)',
   EXPLORE: '/(tabs)/explore',
   
+  // Heir & Inheritance routes
+  HEIRS: '/(tabs)/heirs',
+  HEIR_DETAIL: '/heirs/:id',
+  INHERITANCE: '/(tabs)/inheritance',
+  INHERITANCE_DETAIL: '/inheritance/:id',
+  
   // Other routes
   NOT_FOUND: '+not-found',
 } as const;
@@ -23,6 +29,10 @@ declare global {
       [ROUTES.RECOVERY]: undefined;
       [ROUTES.HOME]: undefined;
       [ROUTES.EXPLORE]: undefined;
+      [ROUTES.HEIRS]: undefined;
+      [ROUTES.HEIR_DETAIL]: { id: string };
+      [ROUTES.INHERITANCE]: undefined;
+      [ROUTES.INHERITANCE_DETAIL]: { id: string };
       [ROUTES.NOT_FOUND]: undefined;
     }
   }
