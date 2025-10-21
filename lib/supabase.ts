@@ -15,10 +15,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('EXPO_PUBLIC_SUPABASE_URL=your_url');
   console.error('EXPO_PUBLIC_SUPABASE_ANON_KEY=your_key');
   console.error('Then restart: npx expo start --clear');
-  throw new Error('Supabase configuration missing. Please add .env file and restart.');
+  console.warn('⚠️ Running without Supabase - authentication will not work');
+} else {
+  console.log('✅ Supabase configured:', supabaseUrl);
 }
-
-console.log('✅ Supabase configured:', supabaseUrl);
 
 // Create storage adapter that works on web and native
 const createStorageAdapter = () => {
@@ -35,14 +35,31 @@ const createStorageAdapter = () => {
   return AsyncStorage;
 };
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    storage: createStorageAdapter(),
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-  },
-});
+// Create a dummy client if credentials are missing
+const createSupabaseClient = () => {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // Return a mock client that will fail gracefully
+    return createClient<Database>('https://placeholder.supabase.co', 'placeholder-key', {
+      auth: {
+        storage: { getItem: async () => null, setItem: async () => {}, removeItem: async () => {} },
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
+    });
+  }
+  
+  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      storage: createStorageAdapter(),
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+    },
+  });
+};
+
+export const supabase = createSupabaseClient();
 
 // Helper to check if Supabase is configured
 export const isSupabaseConfigured = () => {

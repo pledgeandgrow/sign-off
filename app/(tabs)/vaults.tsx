@@ -22,6 +22,9 @@ export default function VaultsScreen() {
     selectVault,
     updateVault,
     refreshVaults,
+    addItem,
+    updateItem,
+    deleteItem,
     loading: isRefreshing
   } = useVault();
   
@@ -85,61 +88,58 @@ export default function VaultsScreen() {
     
     try {
       if (selectedItem) {
-        // Update existing item
-        await updateVault(selectedVault.id, {
-          ...selectedVault,
-          items: selectedVault.items.map(item => 
-            item.id === selectedItem.id 
-              ? { ...item, ...itemData, updatedAt: new Date().toISOString() }
-              : item
-          )
+        // Update existing item using VaultContext
+        await updateItem(selectedItem.id, {
+          title: itemData.title || selectedItem.title,
+          type: itemData.type || selectedItem.type,
+          tags: itemData.tags || selectedItem.tags,
         });
       } else {
-        // Add new item
-        const newItem: VaultItem = {
-          id: `item-${Date.now()}`,
-          type: itemData.type || 'note',
+        // Add new item using VaultContext
+        await addItem({
           title: itemData.title || 'Untitled',
+          type: itemData.type || 'note',
           metadata: itemData.metadata || {},
           isEncrypted: false,
-          encryptedFields: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        
-        await updateVault(selectedVault.id, {
-          ...selectedVault,
-          items: [...(selectedVault.items || []), newItem],
-          updatedAt: new Date().toISOString()
+          tags: itemData.tags || [],
         });
       }
       
       setIsCreateItemModalVisible(false);
       setSelectedItem(null);
       await refreshVaults();
+      Alert.alert('Success', selectedItem ? 'Item updated successfully' : 'Item added successfully');
     } catch (error) {
       console.error('Failed to save item:', error);
       Alert.alert('Error', 'Failed to save item. Please try again.');
     }
-  }, [selectedVault, selectedItem, updateVault, refreshVaults]);
+  }, [selectedVault, selectedItem, addItem, updateItem, refreshVaults]);
 
   const handleDeleteItem = useCallback(async (itemId: string) => {
     if (!selectedVault) return;
     
-    try {
-      const updatedVault = {
-        ...selectedVault,
-        items: selectedVault.items.filter(item => item.id !== itemId),
-        updatedAt: new Date().toISOString(),
-      };
-      
-      await updateVault(selectedVault.id, updatedVault);
-      await refreshVaults();
-    } catch (error) {
-      console.error('Failed to delete item:', error);
-      Alert.alert('Error', 'Failed to delete item. Please try again.');
-    }
-  }, [selectedVault, updateVault, refreshVaults]);
+    Alert.alert(
+      'Delete Item',
+      'Are you sure you want to delete this item?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteItem(itemId);
+              await refreshVaults();
+              Alert.alert('Success', 'Item deleted successfully');
+            } catch (error) {
+              console.error('Failed to delete item:', error);
+              Alert.alert('Error', 'Failed to delete item. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  }, [selectedVault, deleteItem, refreshVaults]);
   
   const handleRefresh = useCallback(() => {
     refreshVaults();

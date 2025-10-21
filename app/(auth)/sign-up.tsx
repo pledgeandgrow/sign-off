@@ -3,8 +3,7 @@ import { Logo } from '../../components/ui/Logo';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { AppLink } from '../../components/ui/AppLink';
-import { ROUTES } from '../../app/routes';
+import { ROUTES } from '@/constants/routes';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -105,12 +104,23 @@ export default function SignUp() {
       // Show success message
       Alert.alert(
         'Compte créé!',
-        'Votre compte a été créé avec succès. Vérifiez votre email pour confirmer votre adresse.',
+        'Votre compte a été créé avec succès. Vous pouvez maintenant vous connecter.',
         [{ text: 'OK', onPress: () => router.replace(ROUTES.HOME as any) }]
       );
     } catch (err: any) {
       console.error('Sign up error:', err);
-      setError(err.message || 'Échec de la création du compte. Veuillez réessayer.');
+      const errorMessage = err?.message || 'Échec de la création du compte. Veuillez réessayer.';
+      
+      // Provide more specific error messages
+      if (errorMessage.includes('already registered') || errorMessage.includes('already exists')) {
+        setError('Cette adresse email est déjà utilisée');
+      } else if (errorMessage.includes('Password should be')) {
+        setError('Le mot de passe doit contenir au moins 6 caractères');
+      } else if (errorMessage.includes('not configured')) {
+        setError('Configuration manquante. Veuillez contacter le support.');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -279,12 +289,14 @@ export default function SignUp() {
             
             {/* Footer Section */}
             <View style={styles.footer}>
-              <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-                Vous avez déjà un compte ?{' '}
-                <AppLink href={`/${ROUTES.SIGN_IN}`}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+                  Vous avez déjà un compte ?{' '}
+                </Text>
+                <TouchableOpacity onPress={() => router.push(`/${ROUTES.SIGN_IN}` as any)}>
                   <Text style={[styles.footerLink, { color: colors.purple.primary }]}>Se connecter</Text>
-                </AppLink>
-              </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </ScrollView>

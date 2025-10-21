@@ -110,6 +110,76 @@ export async function createInheritancePlan(
 }
 
 /**
+ * Link heirs to an inheritance plan
+ */
+export async function linkHeirsToPlan(
+  planId: string,
+  heirIds: string[]
+): Promise<void> {
+  // Update all selected heirs to link them to this plan
+  const { error } = await supabase
+    .from('heirs')
+    .update({ inheritance_plan_id: planId })
+    .in('id', heirIds);
+
+  if (error) throw error;
+}
+
+/**
+ * Get heir vault access for a plan
+ */
+export async function getHeirVaultAccessByPlan(planId: string): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('heir_vault_access')
+    .select(`
+      *,
+      heir:heirs!inner(id, full_name_encrypted, inheritance_plan_id),
+      vault:vaults(id, name)
+    `)
+    .eq('heir.inheritance_plan_id', planId);
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Create heir vault access records
+ */
+export async function createHeirVaultAccess(
+  heirIds: string[],
+  vaultIds: string[],
+  permissions: {
+    can_view?: boolean;
+    can_export?: boolean;
+    can_edit?: boolean;
+  } = { can_view: true, can_export: false, can_edit: false }
+): Promise<void> {
+  // Create access records for each heir-vault combination
+  const accessRecords = [];
+  
+  for (const heirId of heirIds) {
+    for (const vaultId of vaultIds) {
+      accessRecords.push({
+        heir_id: heirId,
+        vault_id: vaultId,
+        vault_item_id: null,
+        can_view: permissions.can_view ?? true,
+        can_export: permissions.can_export ?? false,
+        can_edit: permissions.can_edit ?? false,
+      });
+    }
+  }
+
+  if (accessRecords.length > 0) {
+    const { error } = await supabase
+      .from('heir_vault_access')
+      .insert(accessRecords);
+
+    if (error) throw error;
+  }
+}
+
+/**
  * Update an inheritance plan
  */
 export async function updateInheritancePlan(
@@ -301,14 +371,12 @@ export async function getHeirDecrypted(
  * Decrypt heir data
  */
 async function decryptHeir(heir: Heir, privateKey: string): Promise<HeirDecrypted> {
-  const full_name = await decryptData(heir.full_name_encrypted, privateKey);
-  const email = await decryptData(heir.email_encrypted, privateKey);
-  const phone = heir.phone_encrypted
-    ? await decryptData(heir.phone_encrypted, privateKey)
-    : null;
-  const relationship = heir.relationship_encrypted
-    ? await decryptData(heir.relationship_encrypted, privateKey)
-    : null;
+  // For now, no encryption - just return the "encrypted" fields as plain text
+  // When encryption is added, uncomment the decryptData calls
+  const full_name = heir.full_name_encrypted; // await decryptData(heir.full_name_encrypted, privateKey);
+  const email = heir.email_encrypted; // await decryptData(heir.email_encrypted, privateKey);
+  const phone = heir.phone_encrypted; // heir.phone_encrypted ? await decryptData(heir.phone_encrypted, privateKey) : null;
+  const relationship = heir.relationship_encrypted; // heir.relationship_encrypted ? await decryptData(heir.relationship_encrypted, privateKey) : null;
 
   return {
     ...heir,

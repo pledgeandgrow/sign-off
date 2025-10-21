@@ -7,10 +7,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View, StatusBar } from 'react-native';
+import { Alert, ScrollView, StyleSheet, View, StatusBar, ActionSheetIOS, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import * as ImagePicker from 'expo-image-picker';
+import * as WebBrowser from 'expo-web-browser';
 
 type ViewType = 'main' | 'edit-profile' | 'security' | 'notifications';
 
@@ -69,6 +71,83 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleAvatarPress = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Annuler', 'Prendre une photo', 'Choisir depuis la galerie'],
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            pickImageFromCamera();
+          } else if (buttonIndex === 2) {
+            pickImageFromGallery();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Photo de profil',
+        'Choisissez une option',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          { text: 'Prendre une photo', onPress: pickImageFromCamera },
+          { text: 'Choisir depuis la galerie', onPress: pickImageFromGallery },
+        ]
+      );
+    }
+  };
+
+  const pickImageFromCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission refusée', 'Nous avons besoin de votre permission pour accéder à la caméra');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      uploadAvatar(result.assets[0].uri);
+    }
+  };
+
+  const pickImageFromGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission refusée', 'Nous avons besoin de votre permission pour accéder à la galerie');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      uploadAvatar(result.assets[0].uri);
+    }
+  };
+
+  const uploadAvatar = async (uri: string) => {
+    try {
+      // TODO: Upload to Supabase storage and update user profile
+      Alert.alert('En cours', 'Upload de l\'avatar en cours de développement');
+      console.log('Avatar URI:', uri);
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      Alert.alert('Erreur', 'Échec de l\'upload de l\'avatar');
+    }
+  };
+
   const renderMainView = () => (
     <>
       <View style={[styles.profileCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
@@ -76,22 +155,24 @@ export default function ProfileScreen() {
           name={fullName} 
           email={email} 
           onEditPress={handleEditProfile}
+          onAvatarPress={handleAvatarPress}
+          avatarUrl={user?.avatar_url}
         />
       </View>
 
       <ProfileSection title="Compte">
         <ProfileMenuItem
-          icon="account"
+          icon="person"
           label="Informations personnelles"
           onPress={handleEditProfile}
         />
         <ProfileMenuItem
-          icon="shield-check"
+          icon="security"
           label="Sécurité"
           onPress={handleSecurityPress}
         />
         <ProfileMenuItem
-          icon="bell"
+          icon="notifications"
           label="Notifications"
           onPress={handleNotificationPress}
         />
@@ -99,9 +180,9 @@ export default function ProfileScreen() {
 
       <ProfileSection title="Support">
         <ProfileMenuItem
-          icon="help-circle"
+          icon="help"
           label="Aide & Support"
-          onPress={() => console.log('Navigate to help')}
+          onPress={() => WebBrowser.openBrowserAsync('https://heriwill.com/contact')}
         />
         <ProfileMenuItem
           icon="school"
@@ -109,9 +190,9 @@ export default function ProfileScreen() {
           onPress={handleViewOnboarding}
         />
         <ProfileMenuItem
-          icon="information"
+          icon="info"
           label="À propos de Sign-off"
-          onPress={() => console.log('Show about')}
+          onPress={() => WebBrowser.openBrowserAsync('https://heriwill.com/about')}
         />
       </ProfileSection>
 

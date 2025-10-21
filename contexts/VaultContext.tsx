@@ -1,8 +1,7 @@
 import { Vault, VaultCategory, VaultItem } from '@/types/vault';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
-
-const VAULT_STORAGE_KEY = '@vaults_data';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from './AuthContext';
 
 interface VaultContextType {
   vaults: Vault[];
@@ -26,24 +25,87 @@ interface VaultContextType {
 const VaultContext = createContext<VaultContextType | undefined>(undefined);
 
 export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [vaults, setVaults] = useState<Vault[]>([]);
   const [currentVault, setCurrentVault] = useState<Vault | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load vaults from AsyncStorage on mount
+  // Load vaults from Supabase when user is authenticated
   useEffect(() => {
-    loadVaults();
-  }, []);
+    if (user) {
+      loadVaults();
+    } else {
+      setVaults([]);
+      setCurrentVault(null);
+      setIsLoading(false);
+    }
+  }, [user]);
 
   const loadVaults = async () => {
+    if (!user) return;
+    
     try {
       setIsLoading(true);
-      const storedVaults = await AsyncStorage.getItem(VAULT_STORAGE_KEY);
-      if (storedVaults) {
-        setVaults(JSON.parse(storedVaults));
+      console.log('Loading vaults for user:', user.id);
+      
+      // Load vaults
+      const { data: vaultsData, error: vaultsError } = await supabase
+        .from('vaults')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (vaultsError) {
+        console.error('Supabase error loading vaults:', vaultsError);
+        throw vaultsError;
       }
+
+      console.log('Loaded vaults:', vaultsData?.length || 0);
+
+      // Load all vault items for this user
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('vault_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (itemsError) {
+        console.error('Supabase error loading vault items:', itemsError);
+        // Don't throw, just log - vaults can exist without items
+      }
+
+      console.log('Loaded vault items:', itemsData?.length || 0);
+
+      // Map items to vaults
+      const vaultsWithItems = (vaultsData || []).map(vault => {
+        const vaultItems = (itemsData || [])
+          .filter(item => item.vault_id === vault.id)
+          .map(item => ({
+            id: item.id,
+            title: item.title_encrypted,
+            type: item.item_type,
+            createdAt: item.created_at,
+            updatedAt: item.updated_at,
+            metadata: {},
+            isEncrypted: false,
+            tags: item.tags || [],
+          }));
+
+        return {
+          ...vault,
+          items: vaultItems,
+          encryptionType: 'none' as VaultEncryptionType,
+          createdAt: vault.created_at,
+          updatedAt: vault.updated_at,
+          isEncrypted: vault.is_encrypted,
+          isLocked: vault.is_locked,
+        };
+      });
+
+      setVaults(vaultsWithItems);
+      setError(null);
     } catch (err) {
       console.error('Failed to load vaults:', err);
       setError('Failed to load vaults. Please try again.');
@@ -52,55 +114,71 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  // Save vaults to AsyncStorage whenever they change
-  const saveVaults = useCallback(async (vaultsToSave: Vault[]) => {
-    try {
-      await AsyncStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(vaultsToSave));
-    } catch (err) {
-      console.error('Failed to save vaults:', err);
-      throw new Error('Failed to save vaults');
-    }
-  }, []);
-
   const createVault = async (vaultData: { name: string; category: VaultCategory; description?: string }): Promise<Vault> => {
+    if (!user) throw new Error('User not authenticated');
+    
     try {
       setIsLoading(true);
       
-      const newVault: Vault = {
-        id: `vault-${Date.now()}`,
+      const vaultToInsert = {
+        user_id: user.id,
         name: vaultData.name,
-        description: vaultData.description,
+        description: vaultData.description || null,
         category: vaultData.category,
-        isEncrypted: false,
-        encryptionType: 'none',
-        isLocked: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        items: [],
+        icon: null,
+        color: null,
         settings: {
           autoLock: true,
           autoLockTimeout: 15,
           maxFailedAttempts: 5,
           twoFactorEnabled: false,
         },
-        accessControl: {
+        access_control: {
           allowedUsers: [],
           allowedHeirs: [],
           requireApproval: true,
         },
-        deathSettings: {
+        death_settings: {
           triggerAfterDays: 30,
           notifyContacts: true,
           notifyEmail: [],
           notifySMS: [],
           instructions: '',
         },
-        tags: []
+        is_encrypted: false,
+        is_locked: false,
+        is_shared: false,
+        is_favorite: false,
+        tags: [],
+        sort_order: 0,
+      };
+
+      console.log('Creating vault:', vaultToInsert);
+
+      const { data, error: insertError } = await supabase
+        .from('vaults')
+        .insert(vaultToInsert)
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Supabase error creating vault:', insertError);
+        throw insertError;
+      }
+
+      console.log('Vault created successfully:', data);
+
+      const newVault: Vault = {
+        ...data,
+        items: [],
+        encryptionType: 'none',
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        isEncrypted: data.is_encrypted,
+        isLocked: data.is_locked,
       };
       
-      const updatedVaults = [...vaults, newVault];
-      await saveVaults(updatedVaults);
-      setVaults(updatedVaults);
+      setVaults((prev) => [newVault, ...prev]);
       return newVault;
     } catch (err) {
       console.error('Failed to create vault:', err);
@@ -110,7 +188,7 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  const selectVault = (vaultId: string | null) => {
+  const selectVault = async (vaultId: string | null) => {
     if (!vaultId) {
       setCurrentVault(null);
       return;
@@ -118,33 +196,75 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const vault = vaults.find(v => v.id === vaultId);
     if (vault) {
       setCurrentVault(vault);
+      // Update last_accessed timestamp
+      try {
+        await supabase
+          .from('vaults')
+          .update({ last_accessed: new Date().toISOString() })
+          .eq('id', vaultId);
+      } catch (err) {
+        console.error('Failed to update last_accessed:', err);
+      }
     }
   };
 
   const addItem = async (item: Omit<VaultItem, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!currentVault) return;
+    if (!currentVault || !user) throw new Error('Vault not selected or user not authenticated');
 
     try {
       setIsLoading(true);
-      const newItem: VaultItem = {
-        ...item,
-        id: `item-${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+      
+      // Generate storage path for the item
+      const storagePath = `${user.id}/${currentVault.id}/${Date.now()}_${item.title}`;
+      
+      const itemToInsert = {
+        vault_id: currentVault.id,
+        user_id: user.id,
+        item_type: item.type,
+        storage_path: storagePath,
+        storage_bucket: 'vault-items',
+        file_size: null,
+        title_encrypted: item.title, // TODO: Encrypt later
+        tags: item.tags || [],
+        is_favorite: false,
+        password_strength: null,
+        password_last_changed: null,
+        requires_password_change: false,
       };
 
+      console.log('Creating vault item:', itemToInsert);
+
+      const { data, error } = await supabase
+        .from('vault_items')
+        .insert(itemToInsert)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase error creating item:', error);
+        throw error;
+      }
+
+      console.log('Item created successfully:', data);
+
+      const newItem: VaultItem = {
+        id: data.id,
+        title: data.title_encrypted,
+        type: data.item_type,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        metadata: {},
+        isEncrypted: false,
+        tags: data.tags,
+      };
+
+      // Update local vault with new item
       const updatedVault = {
         ...currentVault,
-        items: [...currentVault.items, newItem],
-        updatedAt: new Date().toISOString(),
+        items: [...(currentVault.items || []), newItem],
       };
-
-      const updatedVaults = vaults.map(v => 
-        v.id === currentVault.id ? updatedVault : v
-      );
       
-      await saveVaults(updatedVaults);
-      setVaults(updatedVaults);
+      setVaults((prev) => prev.map(v => v.id === currentVault.id ? updatedVault : v));
       setCurrentVault(updatedVault);
     } catch (err) {
       console.error('Failed to add item:', err);
@@ -155,27 +275,54 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateItem = async (itemId: string, updates: Partial<VaultItem>) => {
-    if (!currentVault) return;
+    if (!currentVault || !user) throw new Error('Vault not selected or user not authenticated');
 
     try {
       setIsLoading(true);
       
-      const updatedVault = {
-        ...currentVault,
-        items: currentVault.items.map(item => 
-          item.id === itemId 
-            ? { ...item, ...updates, updatedAt: new Date().toISOString() } 
-            : item
-        ),
-        updatedAt: new Date().toISOString(),
+      const dbUpdates: any = {
+        updated_at: new Date().toISOString(),
+      };
+      
+      if (updates.title) dbUpdates.title_encrypted = updates.title;
+      if (updates.type) dbUpdates.item_type = updates.type;
+      if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
+
+      console.log('Updating vault item:', itemId, dbUpdates);
+
+      const { data, error } = await supabase
+        .from('vault_items')
+        .update(dbUpdates)
+        .eq('id', itemId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase error updating item:', error);
+        throw error;
+      }
+
+      console.log('Item updated successfully:', data);
+
+      const updatedItem: VaultItem = {
+        id: data.id,
+        title: data.title_encrypted,
+        type: data.item_type,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        metadata: {},
+        isEncrypted: false,
+        tags: data.tags,
       };
 
-      const updatedVaults = vaults.map(v => 
-        v.id === currentVault.id ? updatedVault : v
-      );
+      // Update local vault items
+      const updatedVault = {
+        ...currentVault,
+        items: currentVault.items.map(item => item.id === itemId ? updatedItem : item),
+      };
       
-      await saveVaults(updatedVaults);
-      setVaults(updatedVaults);
+      setVaults((prev) => prev.map(v => v.id === currentVault.id ? updatedVault : v));
       setCurrentVault(updatedVault);
     } catch (err) {
       console.error('Failed to update item:', err);
@@ -186,23 +333,33 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const deleteItem = async (itemId: string) => {
-    if (!currentVault) return;
+    if (!currentVault || !user) throw new Error('Vault not selected or user not authenticated');
 
     try {
       setIsLoading(true);
       
+      console.log('Deleting vault item:', itemId);
+
+      const { error } = await supabase
+        .from('vault_items')
+        .delete()
+        .eq('id', itemId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Supabase error deleting item:', error);
+        throw error;
+      }
+
+      console.log('Item deleted successfully');
+
+      // Update local vault items
       const updatedVault = {
         ...currentVault,
         items: currentVault.items.filter(item => item.id !== itemId),
-        updatedAt: new Date().toISOString(),
       };
-
-      const updatedVaults = vaults.map(v => 
-        v.id === currentVault.id ? updatedVault : v
-      );
       
-      await saveVaults(updatedVaults);
-      setVaults(updatedVaults);
+      setVaults((prev) => prev.map(v => v.id === currentVault.id ? updatedVault : v));
       setCurrentVault(updatedVault);
     } catch (err) {
       console.error('Failed to delete item:', err);
@@ -212,43 +369,47 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  const lockVault = () => {
+  const lockVault = async () => {
     if (!currentVault) return;
     
-    const updatedVault = { 
-      ...currentVault, 
-      isLocked: true,
-      updatedAt: new Date().toISOString()
-    };
-    
-    const updatedVaults = vaults.map(v => 
-      v.id === currentVault.id ? updatedVault : v
-    );
-    
-    setVaults(updatedVaults);
-    setCurrentVault(updatedVault);
-    saveVaults(updatedVaults).catch(console.error);
+    try {
+      const { error } = await supabase
+        .from('vaults')
+        .update({ 
+          is_locked: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentVault.id);
+
+      if (error) throw error;
+
+      const updatedVault = { ...currentVault, isLocked: true };
+      setVaults((prev) => prev.map(v => v.id === currentVault.id ? updatedVault : v));
+      setCurrentVault(updatedVault);
+    } catch (err) {
+      console.error('Failed to lock vault:', err);
+    }
   };
 
   const unlockVault = async (vaultId: string, password?: string): Promise<boolean> => {
     try {
       setIsLoading(true);
-      // In a real app, you would verify the password here
+      // TODO: Verify password in production
       const vault = vaults.find(v => v.id === vaultId);
       if (!vault) return false;
       
-      const updatedVault = { 
-        ...vault, 
-        isLocked: false,
-        updatedAt: new Date().toISOString()
-      };
-      
-      const updatedVaults = vaults.map(v => 
-        v.id === vaultId ? updatedVault : v
-      );
-      
-      await saveVaults(updatedVaults);
-      setVaults(updatedVaults);
+      const { error } = await supabase
+        .from('vaults')
+        .update({ 
+          is_locked: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', vaultId);
+
+      if (error) throw error;
+
+      const updatedVault = { ...vault, isLocked: false };
+      setVaults((prev) => prev.map(v => v.id === vaultId ? updatedVault : v));
       setCurrentVault(updatedVault);
       return true;
     } catch (err) {
@@ -262,10 +423,7 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const refreshVaults = async () => {
     try {
       setIsRefreshing(true);
-      const storedVaults = await AsyncStorage.getItem(VAULT_STORAGE_KEY);
-      if (storedVaults) {
-        setVaults(JSON.parse(storedVaults));
-      }
+      await loadVaults();
     } catch (err) {
       console.error('Failed to refresh vaults:', err);
       setError('Failed to refresh vaults. Please try again.');
@@ -276,15 +434,61 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateVault = async (vaultId: string, updates: Partial<Vault>) => {
+    if (!user) throw new Error('User not authenticated');
+    
     try {
       setIsLoading(true);
-      const updatedVaults = vaults.map(v => 
-        v.id === vaultId ? { ...v, ...updates, updatedAt: new Date().toISOString() } : v
-      );
-      await saveVaults(updatedVaults);
-      setVaults(updatedVaults);
+      
+      // Map frontend field names to database field names
+      const dbUpdates: any = {
+        updated_at: new Date().toISOString(),
+      };
+      
+      if (updates.name) dbUpdates.name = updates.name;
+      if (updates.description !== undefined) dbUpdates.description = updates.description;
+      if (updates.category) dbUpdates.category = updates.category;
+      if (updates.icon !== undefined) dbUpdates.icon = updates.icon;
+      if (updates.color !== undefined) dbUpdates.color = updates.color;
+      if (updates.settings) dbUpdates.settings = updates.settings;
+      if (updates.accessControl) dbUpdates.access_control = updates.accessControl;
+      if (updates.deathSettings) dbUpdates.death_settings = updates.deathSettings;
+      if (updates.isEncrypted !== undefined) dbUpdates.is_encrypted = updates.isEncrypted;
+      if (updates.isLocked !== undefined) dbUpdates.is_locked = updates.isLocked;
+      if (updates.is_shared !== undefined) dbUpdates.is_shared = updates.is_shared;
+      if (updates.is_favorite !== undefined) dbUpdates.is_favorite = updates.is_favorite;
+      if (updates.tags) dbUpdates.tags = updates.tags;
+      if (updates.sort_order !== undefined) dbUpdates.sort_order = updates.sort_order;
+
+      console.log('Updating vault:', vaultId, dbUpdates);
+
+      const { data, error } = await supabase
+        .from('vaults')
+        .update(dbUpdates)
+        .eq('id', vaultId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase error updating vault:', error);
+        throw error;
+      }
+
+      console.log('Vault updated successfully:', data);
+
+      const updatedVault: Vault = {
+        ...data,
+        items: vaults.find(v => v.id === vaultId)?.items || [],
+        encryptionType: 'none',
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        isEncrypted: data.is_encrypted,
+        isLocked: data.is_locked,
+      };
+
+      setVaults((prev) => prev.map(v => v.id === vaultId ? updatedVault : v));
       if (currentVault?.id === vaultId) {
-        setCurrentVault(updatedVaults.find(v => v.id === vaultId) || null);
+        setCurrentVault(updatedVault);
       }
     } catch (err) {
       console.error('Failed to update vault:', err);
@@ -295,11 +499,27 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const deleteVault = async (vaultId: string) => {
+    if (!user) throw new Error('User not authenticated');
+    
     try {
       setIsLoading(true);
-      const updatedVaults = vaults.filter(v => v.id !== vaultId);
-      await saveVaults(updatedVaults);
-      setVaults(updatedVaults);
+      
+      console.log('Deleting vault:', vaultId);
+
+      const { error } = await supabase
+        .from('vaults')
+        .delete()
+        .eq('id', vaultId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Supabase error deleting vault:', error);
+        throw error;
+      }
+
+      console.log('Vault deleted successfully');
+
+      setVaults((prev) => prev.filter(v => v.id !== vaultId));
       if (currentVault?.id === vaultId) {
         setCurrentVault(null);
       }

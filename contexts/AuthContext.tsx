@@ -4,6 +4,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { createUserProfile, updateUserActivity } from '@/lib/services/supabaseService';
 import { generateKeyPair, storePrivateKey, storePublicKey, deleteStoredKeys } from '@/lib/encryption';
 import type { User as DatabaseUser } from '@/types/database.types';
+import { ROUTES } from '@/constants/routes';
 
 interface AppUser {
   id: string;
@@ -121,12 +122,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data) {
+        const userData = data as any;
         setUser({
-          id: data.id,
-          email: data.email,
-          full_name: data.full_name || undefined,
-          avatar_url: data.avatar_url || undefined,
-          public_key: data.public_key || undefined,
+          id: userData.id,
+          email: userData.email,
+          full_name: userData.full_name || undefined,
+          avatar_url: userData.avatar_url || undefined,
+          public_key: userData.public_key || undefined,
         });
       }
     } catch (error) {
@@ -142,42 +144,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
 
       if (!isSupabaseConfigured()) {
-        throw new Error('Supabase is not configured. Please add credentials to .env.local');
+        throw new Error('Supabase is not configured. Please add credentials to .env file and restart the app.');
       }
 
+      console.log('🔐 Attempting to sign in:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Sign in error:', error.message);
+        throw error;
+      }
 
-      if (data.user) {
-        // Check if user profile exists
-        const { data: profile, error: profileError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
+      if (!data.user) {
+        throw new Error('No user data returned from sign in');
+      }
 
-        // If profile doesn't exist, create it
-        if (profileError && profileError.code === 'PGRST116') {
-          console.log('Creating missing user profile...');
+      console.log('✅ Sign in successful, user ID:', data.user.id);
+
+      // Check if user profile exists
+      const { data: profile, error: profileError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+      // If profile doesn't exist, create it
+      if (profileError && profileError.code === 'PGRST116') {
+        console.log('📝 Creating missing user profile...');
+        try {
           await createUserProfile(
             data.user.id,
             data.user.email || '',
             data.user.user_metadata?.full_name
           );
+          console.log('✅ User profile created');
+        } catch (createError) {
+          console.error('❌ Failed to create user profile:', createError);
+          // Continue anyway - profile will be loaded by loadUserProfile
         }
-
-        await updateUserActivity(data.user.id);
-        // Don't navigate here - let the auth state change handler do it
+      } else if (profile) {
+        const profileData = profile as any;
+        console.log('✅ User profile found:', profileData.email);
       }
+
+      // Update user activity
+      try {
+        await updateUserActivity(data.user.id);
+      } catch (activityError) {
+        console.warn('⚠️ Failed to update user activity:', activityError);
+      }
+
+      // Auth state change handler will load profile and navigate
     } catch (error: any) {
-      console.error('Sign in failed:', error);
-      throw new Error(error.message || 'Failed to sign in. Please check your credentials.');
-    } finally {
+      console.error('❌ Sign in failed:', error);
       setLoading(false);
+      throw new Error(error.message || 'Failed to sign in. Please check your credentials.');
     }
   };
 
@@ -190,9 +214,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
 
       if (!isSupabaseConfigured()) {
-        throw new Error('Supabase is not configured. Please add credentials to .env.local');
+        throw new Error('Supabase is not configured. Please add credentials to .env file and restart the app.');
       }
 
+      console.log('📝 Attempting to sign up:', userData.email);
+      
       // Sign up with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
@@ -204,37 +230,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       });
 
-      if (error) throw error;
-
-      if (data.user) {
-        console.log('📝 Generating encryption keys...');
-        // Generate encryption keys
-        const { publicKey, privateKey } = await generateKeyPair();
-        
-        console.log('💾 Storing keys securely...');
-        // Store keys securely on device
-        await storePrivateKey(privateKey);
-        await storePublicKey(publicKey);
-
-        console.log('👤 Updating user profile with public key...');
-        // User profile is auto-created by database trigger
-        // Just update with the generated public key and full name
-        await supabase
-          .from('users')
-          .update({ 
-            public_key: publicKey,
-            full_name: userData.fullName 
-          })
-          .eq('id', data.user.id);
-
-        console.log('✅ User registered successfully');
-        // Don't navigate here - let the auth state change handler in _layout.tsx handle routing
+      if (error) {
+        console.error('❌ Sign up error:', error.message);
+        throw error;
       }
+
+      if (!data.user) {
+        throw new Error('No user data returned from sign up');
+      }
+
+      console.log('✅ User created in auth, ID:', data.user.id);
+
+      // Generate encryption keys
+      console.log('🔐 Generating encryption keys...');
+      const { publicKey, privateKey } = await generateKeyPair();
+      
+      console.log('💾 Storing keys securely...');
+      await storePrivateKey(privateKey);
+      await storePublicKey(publicKey);
+
+      // Create user profile with public key
+      console.log('👤 Creating user profile...');
+      try {
+        await createUserProfile(
+          data.user.id,
+          userData.email,
+          userData.fullName,
+          publicKey
+        );
+        console.log('✅ User profile created');
+      } catch (profileError: any) {
+        console.error('❌ Failed to create profile:', profileError);
+        
+        // Try to update instead (in case trigger created it)
+        try {
+          console.log('🔄 Attempting to update existing profile...');
+          const { error: updateError } = await supabase
+            .from('users')
+            .update({ 
+              public_key: publicKey,
+              full_name: userData.fullName 
+            } as any)
+            .eq('id', data.user.id);
+          
+          if (updateError) {
+            console.error('❌ Update failed:', updateError);
+          } else {
+            console.log('✅ Profile updated');
+          }
+        } catch (updateError) {
+          console.error('❌ Update attempt failed:', updateError);
+        }
+      }
+
+      console.log('✅ User registered successfully');
+      // Auth state change handler will handle navigation
     } catch (error: any) {
-      console.error('Sign up failed:', error);
-      throw new Error(error.message || 'Failed to create account. Please try again.');
-    } finally {
+      console.error('❌ Sign up failed:', error);
       setLoading(false);
+      throw new Error(error.message || 'Failed to create account. Please try again.');
     }
   };
 
@@ -253,7 +307,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
 
       // Redirect to sign-in
-      router.replace('/(auth)/sign-in' as any);
+      router.replace(ROUTES.SIGN_IN as any);
     } catch (error: any) {
       console.error('Sign out failed:', error);
       throw new Error(error.message || 'Failed to sign out. Please try again.');
@@ -296,19 +350,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .update({
           full_name: updates.full_name,
           avatar_url: updates.avatar_url,
-        })
+        } as any)
         .eq('id', user.id)
         .select()
         .single();
 
       if (error) throw error;
 
+      const userData = data as any;
       const updatedUser: AppUser = {
-        id: data.id,
-        email: data.email,
-        full_name: data.full_name || undefined,
-        avatar_url: data.avatar_url || undefined,
-        public_key: data.public_key || undefined,
+        id: userData.id,
+        email: userData.email,
+        full_name: userData.full_name || undefined,
+        avatar_url: userData.avatar_url || undefined,
+        public_key: userData.public_key || undefined,
       };
 
       setUser(updatedUser);
@@ -331,7 +386,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }

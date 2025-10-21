@@ -9,7 +9,8 @@ import 'react-native-reanimated';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { VaultProvider } from '../contexts/VaultContext';
 import { OnboardingProvider, useOnboarding } from '../contexts/OnboardingContext';
-import { ROUTES } from './routes';
+import { HeirProvider } from '@/contexts/HeirContext';
+import { ROUTES } from '@/constants/routes';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 
 // Loading component shown during auth state check
@@ -30,20 +31,29 @@ function RootLayoutNav() {
   
   // Check if we're in the auth group
   const isAuthRoute = [
-    ROUTES.SIGN_IN,
-    ROUTES.SIGN_UP,
-    ROUTES.RECOVERY
-  ].includes(pathname as any);
+    '/sign-in',
+    '/sign-up',
+    '/recovery',
+    '/(auth)/sign-in',
+    '/(auth)/sign-up',
+    '/(auth)/recovery'
+  ].includes(pathname);
 
   const isOnboardingRoute = pathname === '/onboarding';
+  
+  // Debug logging
+  console.log('🔍 Current pathname:', pathname);
+  console.log('🔍 Is auth route?', isAuthRoute);
+  console.log('🔍 User:', user ? 'logged in' : 'not logged in');
 
   // Redirect to the appropriate screen based on authentication state
   useEffect(() => {
     if (authLoading || onboardingLoading) return;
 
-    // Not authenticated - redirect to sign in
-    if (!user && !isAuthRoute) {
-      router.replace(`/${ROUTES.SIGN_IN}` as any);
+    // Not authenticated - only redirect if trying to access protected routes
+    if (!user && !isAuthRoute && !isOnboardingRoute) {
+      console.log('🔒 Not authenticated, redirecting to sign-in');
+      router.replace(ROUTES.SIGN_IN as any);
       return;
     }
 
@@ -52,7 +62,7 @@ function RootLayoutNav() {
       // Check if user hasn't completed onboarding
       if (!hasCompletedOnboarding) {
         // If not on onboarding route, redirect there
-        if (!isOnboardingRoute) {
+        if (!isOnboardingRoute && !isAuthRoute) {
           console.log('🎓 Redirecting to onboarding...');
           router.replace('/onboarding' as any);
         }
@@ -60,11 +70,8 @@ function RootLayoutNav() {
         // User has completed onboarding
         if (isAuthRoute) {
           // Coming from auth route (login/signup), go to home
-          console.log('✅ Onboarding completed, redirecting to home...');
+          console.log('✅ Already logged in, redirecting to home...');
           router.replace(ROUTES.HOME as any);
-        } else if (isOnboardingRoute) {
-          // Shouldn't be on onboarding if already completed (unless manually accessed)
-          // Let them view it if they want
         }
       }
     }
@@ -82,15 +89,15 @@ function RootLayoutNav() {
     }}>
       {/* Public routes */}
       <Stack.Screen 
-        name={ROUTES.SIGN_IN} 
+        name="(auth)/sign-in" 
         options={{ title: 'Sign In' }} 
       />
       <Stack.Screen 
-        name={ROUTES.SIGN_UP} 
+        name="(auth)/sign-up" 
         options={{ title: 'Create Account' }} 
       />
       <Stack.Screen 
-        name={ROUTES.RECOVERY} 
+        name="(auth)/recovery" 
         options={{ title: 'Password Recovery' }} 
       />
       
@@ -129,10 +136,12 @@ export default function RootLayout() {
       <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <AuthProvider>
           <OnboardingProvider>
-            <VaultProvider>
-              <RootLayoutNav />
-              <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-            </VaultProvider>
+            <HeirProvider>
+              <VaultProvider>
+                <RootLayoutNav />
+                <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+              </VaultProvider>
+            </HeirProvider>
           </OnboardingProvider>
         </AuthProvider>
       </NavThemeProvider>

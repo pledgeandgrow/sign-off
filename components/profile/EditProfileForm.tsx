@@ -18,11 +18,17 @@ export const EditProfileForm: React.FC<EditProfileFormProps> = ({ onSuccess, onC
   
   const { user, updateProfile } = useAuth();
   const [loading, setLoading] = useState(false);
+  
+  // Parse full_name into firstName and lastName
+  const nameParts = (user?.full_name || '').split(' ');
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts.slice(1).join(' ') || '';
+  
   const [formData, setFormData] = useState({
-    firstName: user?.firstName || user?.user_metadata?.first_name || '',
-    lastName: user?.lastName || user?.user_metadata?.last_name || '',
+    firstName,
+    lastName,
     email: user?.email || '',
-    phone: user?.user_metadata?.phone || '',
+    phone: '',
   });
 
   const handleSubmit = async () => {
@@ -33,10 +39,11 @@ export const EditProfileForm: React.FC<EditProfileFormProps> = ({ onSuccess, onC
 
     setLoading(true);
     try {
+      const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`;
       await updateProfile({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        full_name: fullName,
       });
+      Alert.alert('Succès', 'Votre profil a été mis à jour avec succès');
       onSuccess?.();
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -226,12 +233,10 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9f9f9',
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
   },
   inputIcon: {
     marginRight: 10,
@@ -239,11 +244,9 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: 'black',
   },
   disabledInput: {
     backgroundColor: '#f5f5f5',
-    color: '#666',
   },
   hint: {
     fontSize: 12,

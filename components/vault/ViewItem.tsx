@@ -161,7 +161,7 @@ export const ViewItem: React.FC<{ item: VaultItem; onEdit: () => void }> = ({ it
 const createStyles = () => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: 'transparent',
     padding: 16,
   },
   header: {
@@ -179,7 +179,7 @@ const createStyles = () => StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -187,7 +187,7 @@ const createStyles = () => StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#000000',
+    color: '#FFFFFF',
   },
   editButton: {
     padding: 8,
@@ -195,7 +195,7 @@ const createStyles = () => StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     marginVertical: 16,
   },
   detailsContainer: {
@@ -211,14 +211,14 @@ const createStyles = () => StyleSheet.create({
   label: {
     width: 100,
     fontSize: 14,
-    color: '#666666',
+    color: 'rgba(255, 255, 255, 0.6)',
     marginRight: 8,
     fontWeight: '500',
   },
   value: {
     flex: 1,
     fontSize: 14,
-    color: '#000000',
+    color: '#FFFFFF',
     textAlign: 'right',
   },
   metadataSection: {
@@ -226,12 +226,12 @@ const createStyles = () => StyleSheet.create({
     gap: 12,
   },
   link: {
-    color: '#0066cc',
+    color: '#8B5CF6',
     textDecorationLine: 'underline',
   },
   noteText: {
     fontSize: 14,
-    color: '#000000',
+    color: '#FFFFFF',
     lineHeight: 22,
   },
   tagsContainer: {
@@ -241,7 +241,7 @@ const createStyles = () => StyleSheet.create({
     gap: 6,
   },
   tag: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -250,6 +250,6 @@ const createStyles = () => StyleSheet.create({
   },
   tagText: {
     fontSize: 12,
-    color: '#333333',
+    color: '#FFFFFF',
   },
 });

@@ -1,9 +1,9 @@
 // This file defines all the routes in your app
 export const ROUTES = {
   // Auth routes
-  SIGN_IN: 'sign-in',
-  SIGN_UP: 'sign-up',
-  RECOVERY: 'recovery',
+  SIGN_IN: '(auth)/sign-in',
+  SIGN_UP: '(auth)/sign-up',
+  RECOVERY: '(auth)/recovery',
   
   // Main app routes
   HOME: '/(tabs)',

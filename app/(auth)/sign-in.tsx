@@ -4,8 +4,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatusBar } from 'expo-status-bar';
-import { AppLink } from '../../components/ui/AppLink';
-import { ROUTES } from '../../app/routes';
+import { ROUTES } from '@/constants/routes';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -23,13 +22,12 @@ export default function SignInScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSignIn = async () => {
-    if (!email) {
+    if (!email.trim()) {
       setError('Veuillez saisir votre adresse email');
       return;
     }
     
-    // In development mode, password is optional
-    if (!__DEV__ && !password) {
+    if (!password) {
       setError('Veuillez saisir votre mot de passe');
       return;
     }
@@ -37,12 +35,22 @@ export default function SignInScreen() {
     try {
       setIsLoading(true);
       setError('');
-      await signIn(email, password || 'dev-password');
-      router.replace(ROUTES.HOME as any);
+      await signIn(email.trim(), password);
       // Navigation is handled by the auth context
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sign in error:', error);
-      setError('Échec de la connexion. Vérifiez vos identifiants.');
+      const errorMessage = error?.message || 'Échec de la connexion. Vérifiez vos identifiants.';
+      
+      // Provide more specific error messages
+      if (errorMessage.includes('Invalid login credentials')) {
+        setError('Email ou mot de passe incorrect');
+      } else if (errorMessage.includes('Email not confirmed')) {
+        setError('Veuillez confirmer votre email avant de vous connecter');
+      } else if (errorMessage.includes('not configured')) {
+        setError('Configuration manquante. Veuillez contacter le support.');
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -112,7 +120,7 @@ export default function SignInScreen() {
                       borderColor: colors.border,
                       color: colors.text
                     }]}
-                    placeholder={__DEV__ ? "Mot de passe (optionnel en mode dev)" : "Mot de passe"}
+                    placeholder="Mot de passe"
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!isPasswordVisible}
@@ -134,26 +142,14 @@ export default function SignInScreen() {
                   </TouchableOpacity>
                 </View>
                 
-                {__DEV__ && (
-                  <View style={[styles.devModeContainer, { 
-                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                    borderColor: 'rgba(139, 92, 246, 0.2)'
-                  }]}>
-                    <MaterialIcons name="developer-mode" size={16} color={colors.purple.primary} />
-                    <Text style={[styles.devModeText, { color: colors.purple.primary }]}>
-                      Mode développement : Email uniquement requis
-                    </Text>
-                  </View>
-                )}
-                
                 <TouchableOpacity 
                   style={[
                     styles.button, 
                     { backgroundColor: colors.purple.primary },
-                    (isLoading || !email || (__DEV__ ? false : !password)) && styles.buttonDisabled
+                    (isLoading || !email.trim() || !password) && styles.buttonDisabled
                   ]}
                   onPress={handleSignIn}
-                  disabled={isLoading || !email || (__DEV__ ? false : !password)}
+                  disabled={isLoading || !email.trim() || !password}
                   activeOpacity={0.9}
                 >
                   {isLoading ? (
@@ -165,24 +161,30 @@ export default function SignInScreen() {
                   )}
                 </TouchableOpacity>
                 
-                <TouchableOpacity style={styles.forgotPassword}>
-                  <AppLink href={`/${ROUTES.RECOVERY}`}>
-                    <Text style={[styles.forgotPasswordText, { color: colors.textSecondary }]}>
-                      Mot de passe oublié ?
-                    </Text>
-                  </AppLink>
+                <TouchableOpacity 
+                  style={styles.forgotPassword}
+                  onPress={() => router.push(`/${ROUTES.RECOVERY}` as any)}
+                >
+                  <Text style={[styles.forgotPasswordText, { color: colors.textSecondary }]}>
+                    Mot de passe oublié ?
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
             
             {/* Footer Section */}
             <View style={styles.footer}>
-              <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-                Vous n'avez pas de compte ?{' '}
-                <AppLink href={`/${ROUTES.SIGN_UP}`}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+                  Vous n'avez pas de compte ?{' '}
+                </Text>
+                <TouchableOpacity onPress={() => {
+                  console.log('Navigating to:', `/${ROUTES.SIGN_UP}`);
+                  router.push(`/${ROUTES.SIGN_UP}` as any);
+                }}>
                   <Text style={[styles.footerLink, { color: colors.purple.primary }]}>En créer un</Text>
-                </AppLink>
-              </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </ScrollView>

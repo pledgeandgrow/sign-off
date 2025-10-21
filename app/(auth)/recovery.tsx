@@ -2,7 +2,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Keyboa
 import { Logo } from '../../components/ui/Logo';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ROUTES } from '../../app/routes';
+import { ROUTES } from '@/constants/routes';
 import { AppLink } from '../../components/ui/AppLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -124,7 +124,7 @@ export default function Recovery() {
               
               <TouchableOpacity 
                 style={styles.backToLogin}
-                onPress={() => router.replace(`/${ROUTES.SIGN_IN}` as any)}
+                onPress={() => router.replace(ROUTES.SIGN_IN as any)}
               >
                 <Text style={[styles.backToLoginText, { color: colors.textSecondary }]}>
                   Retour à la connexion
@@ -154,7 +154,7 @@ export default function Recovery() {
               
               <TouchableOpacity 
                 style={styles.backToLogin}
-                onPress={() => router.replace(`/${ROUTES.SIGN_IN}` as any)}
+                onPress={() => router.replace(ROUTES.SIGN_IN as any)}
               >
                 <Text style={[styles.backToLoginText, { color: colors.textSecondary }]}>
                   Retour à la connexion

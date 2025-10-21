@@ -1,19 +1,24 @@
-import React from 'react';
-import { 
-  RefreshControl, 
-  ScrollView, 
-  StyleSheet, 
-  Text, 
-  View, 
-  TouchableOpacity,
-  Dimensions,
-  StatusBar
-} from 'react-native';
-import { SafeAreaView as SafeAreaViewRN } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useState, useEffect } from 'react';
+import {
+  Dimensions,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { SafeAreaView as SafeAreaViewRN } from 'react-native-safe-area-context';
+import { useAuth } from '@/contexts/AuthContext';
+import { useVault } from '@/contexts/VaultContext';
+import { useHeirs } from '@/contexts/HeirContext';
+import { getInheritancePlans } from '@/lib/services/inheritanceService';
+import { getRecentActivities, getActivityIcon, formatActivityTime, Activity } from '@/lib/services/activityService';
 
 const { width } = Dimensions.get('window');
 
@@ -36,54 +41,75 @@ const QUICK_ACTIONS = [
   },
   {
     id: '3',
-    title: 'Paramètres de sécurité',
-    description: 'Configurez votre protection',
-    icon: 'shield-cog',
+    title: 'Accéder a votre profil',
+    description: 'Gérez vos informations personnelles',
+    icon: 'account-circle',
     route: '/profile',
     color: Colors.dark.purple.tertiary,
   },
 ];
 
-const STATS_DATA = [
-  { label: 'Coffres-forts', value: '3', icon: 'lock' },
-  { label: 'Héritiers', value: '2', icon: 'account-group' },
-  { label: 'Documents', value: '12', icon: 'file-document' },
-];
-
-const RECENT_ACTIVITIES = [
-  {
-    id: '1',
-    type: 'vault',
-    title: 'Coffre-fort "Banque" créé',
-    time: 'Il y a 2h',
-    icon: 'lock',
-  },
-  {
-    id: '2',
-    type: 'heir',
-    title: 'Marie Dupont ajoutée',
-    time: 'Il y a 1j',
-    icon: 'account-plus',
-  },
-  {
-    id: '3',
-    type: 'security',
-    title: 'Authentification mise à jour',
-    time: 'Il y a 2j',
-    icon: 'shield-check',
-  },
-];
-
 export default function HomeScreen() {
-  const [refreshing, setRefreshing] = React.useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [inheritancePlansCount, setInheritancePlansCount] = useState(0);
+  const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
   const colorScheme = useColorScheme();
   const router = useRouter();
   const colors = Colors[colorScheme ?? 'dark'];
+  const { user } = useAuth();
+  const { vaults } = useVault();
+  const { heirs } = useHeirs();
+
+  // Calculate real stats
+  const vaultsCount = vaults.length;
+  const heirsCount = heirs.length;
+  const totalItems = vaults.reduce((sum, vault) => sum + (vault.items?.length || 0), 0);
+
+  // Fetch data
+  useEffect(() => {
+    loadData();
+  }, [user]);
+
+  const loadData = async () => {
+    if (!user) return;
+    await Promise.all([
+      loadInheritancePlans(),
+      loadActivities(),
+    ]);
+  };
+
+  const loadInheritancePlans = async () => {
+    if (!user) return;
+    try {
+      const plans = await getInheritancePlans(user.id);
+      setInheritancePlansCount(plans.length);
+    } catch (error) {
+      console.error('Error loading inheritance plans:', error);
+    }
+  };
+
+  const loadActivities = async () => {
+    if (!user) return;
+    try {
+      const activities = await getRecentActivities(user.id, 5);
+      setRecentActivities(activities);
+    } catch (error) {
+      console.error('Error loading activities:', error);
+    }
+  };
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
+    loadData();
     setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+  }, [user]);
+
+  // Real stats data
+  const STATS_DATA = [
+    { label: 'Coffres-forts', value: vaultsCount.toString(), icon: 'lock' },
+    { label: 'Héritiers', value: heirsCount.toString(), icon: 'account-group' },
+    { label: 'Plans d\'héritage', value: inheritancePlansCount.toString(), icon: 'file-document-multiple' },
+  ];
 
   const QuickActionCard = ({ item }: { item: typeof QUICK_ACTIONS[0] }) => (
     <TouchableOpacity
@@ -112,14 +138,18 @@ export default function HomeScreen() {
     </View>
   );
 
-  const ActivityItem = ({ activity }: { activity: typeof RECENT_ACTIVITIES[0] }) => (
+  const ActivityItem = ({ activity }: { activity: Activity }) => (
     <View style={styles.activityItem}>
       <View style={styles.activityIconContainer}>
-        <MaterialCommunityIcons name={activity.icon as any} size={16} color={colors.purple.primary} />
+        <MaterialCommunityIcons 
+          name={getActivityIcon(activity.activity_type) as any} 
+          size={16} 
+          color={colors.purple.primary} 
+        />
       </View>
       <View style={styles.activityContent}>
         <Text style={styles.activityTitle}>{activity.title}</Text>
-        <Text style={styles.activityTime}>{activity.time}</Text>
+        <Text style={styles.activityTime}>{formatActivityTime(activity.created_at)}</Text>
       </View>
     </View>
   );
@@ -140,34 +170,6 @@ export default function HomeScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={[styles.greeting, { color: colors.textSecondary }]}>
-              Bonjour
-            </Text>
-            <Text style={[styles.userName, { color: colors.text }]}>
-              Votre testament numérique
-            </Text>
-          </View>
-          <TouchableOpacity 
-            style={styles.profileButton}
-            onPress={() => router.push('/profile' as any)}
-          >
-            <MaterialCommunityIcons name="account-circle" size={40} color={colors.purple.primary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Security Status */}
-        <View style={styles.securityStatus}>
-          <View style={styles.securityIconContainer}>
-            <MaterialCommunityIcons name="shield-check" size={20} color={colors.success} />
-          </View>
-          <Text style={[styles.securityText, { color: colors.text }]}>
-            Votre compte est sécurisé
-          </Text>
-        </View>
-
         {/* Stats Overview */}
         <View style={styles.statsContainer}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -191,23 +193,20 @@ export default function HomeScreen() {
         </View>
 
         {/* Recent Activity */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Activité récente
-            </Text>
-            <TouchableOpacity>
-              <Text style={[styles.seeAllText, { color: colors.purple.primary }]}>
-                Voir tout
+        {recentActivities.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Activité récente
               </Text>
-            </TouchableOpacity>
+            </View>
+            <View style={styles.activityContainer}>
+              {recentActivities.map((activity) => (
+                <ActivityItem key={activity.id} activity={activity} />
+              ))}
+            </View>
           </View>
-          <View style={styles.activityContainer}>
-            {RECENT_ACTIVITIES.map((activity) => (
-              <ActivityItem key={activity.id} activity={activity} />
-            ))}
-          </View>
-        </View>
+        )}
 
         {/* Footer */}
         <View style={styles.footer}>
@@ -232,47 +231,6 @@ const styles = StyleSheet.create({
   },
   scrollViewContent: {
     paddingBottom: 120, // Augmenté pour éviter que le contenu soit caché par la tab bar
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 10,
-    paddingRight: 60, // Augmenté pour ramener l'icône plus vers la gauche
-  },
-  greeting: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  userName: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  profileButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  securityStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    marginHorizontal: 20,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
-  },
-  securityIconContainer: {
-    marginRight: 8,
-  },
-  securityText: {
-    fontSize: 14,
-    fontWeight: '500',
   },
   statsContainer: {
     padding: 20,

@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { VaultItem, VaultItemType } from '@/types/vault';
-import { useTheme } from '@/contexts/ThemeContext';
 import { MaterialIcons as Icons } from '@expo/vector-icons';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 
 type VaultItemCardProps = {
@@ -33,7 +34,8 @@ export const VaultItemCard: React.FC<VaultItemCardProps> = ({
   onDelete,
   isSelected = false,
 }) => {
-  useTheme(); // Theme context might be used by child components
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
   const iconName = itemIcons[item.type] || 'more-horiz';
   
   return (
@@ -41,35 +43,33 @@ export const VaultItemCard: React.FC<VaultItemCardProps> = ({
       style={[
         styles.container,
         { 
-          backgroundColor: '#ffffff',
-          borderColor: isSelected ? '#000000' : '#f0f0f0',
+          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          borderColor: isSelected ? colors.purple.primary : 'rgba(255, 255, 255, 0.1)',
           borderWidth: 1,
-          borderRadius: 8,
-          marginBottom: 8,
         }
       ]} 
       onPress={onPress}
       onLongPress={onLongPress}
       activeOpacity={0.8}
     >
-      <View style={styles.iconContainer}>
+      <View style={[styles.iconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
         <Icons 
           name={iconName as keyof typeof Icons.glyphMap} 
           size={20} 
-          color={isSelected ? '#000000' : '#666666'}
+          color={colors.purple.primary}
         />
       </View>
       
       <View style={styles.content}>
         <Text 
-          style={styles.title} 
+          style={[styles.title, { color: colors.text }]} 
           numberOfLines={1} 
           ellipsizeMode="tail"
         >
           {item.title}
         </Text>
         <Text 
-          style={styles.subtitle} 
+          style={[styles.subtitle, { color: colors.textSecondary }]} 
           numberOfLines={1} 
           ellipsizeMode="tail"
         >
@@ -79,7 +79,7 @@ export const VaultItemCard: React.FC<VaultItemCardProps> = ({
       
       {item.isEncrypted && (
         <View style={styles.actions}>
-          <Icons name="lock" size={16} color="#666666" />
+          <Icons name="lock" size={16} color={colors.purple.primary} />
         </View>
       )}
     </TouchableOpacity>
@@ -120,14 +120,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    marginHorizontal: 16,
-    marginBottom: 8,
+    borderRadius: 12,
+    marginBottom: 12,
   },
   iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -137,13 +136,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#000000',
-    marginBottom: 2,
+    fontWeight: '600',
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#666666',
   },
   actions: {
     marginLeft: 8,

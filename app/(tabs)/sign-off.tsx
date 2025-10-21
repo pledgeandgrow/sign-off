@@ -1,34 +1,15 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SignOffScreen = () => {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
-
-  const handleSignOff = () => {
-    Alert.alert(
-      'Confirmation Sign-off',
-      'Êtes-vous absolument sûr de vouloir initier le processus de sign-off ? Cette action est irréversible.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Confirmer',
-          style: 'destructive',
-          onPress: () => {
-            // TODO: Implement sign-off logic
-            console.log('Sign-off confirmed');
-            Alert.alert('Sign-off initié', 'Le processus de sign-off a été lancé avec succès.');
-          },
-        },
-      ],
-      { cancelable: true }
-    );
-  };
 
   // Mock data - in real app, this would come from context/state
   const signOffStats = {
@@ -50,120 +31,47 @@ const SignOffScreen = () => {
         <View style={styles.header}>
           <Text style={[styles.title, { color: colors.text }]}>Sign-off</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Configurez vos dernières volontés et votre héritage numérique
+            Gérez votre héritage numérique et vos dernières volontés
           </Text>
         </View>
 
-        {/* Warning Card */}
-        <View style={[styles.warningCard, { 
-          backgroundColor: 'rgba(255, 149, 0, 0.1)',
-          borderColor: 'rgba(255, 149, 0, 0.3)'
-        }]}>
-          <View style={styles.cardHeader}>
-            <MaterialIcons name="warning" size={24} color="#FF9500" />
-            <Text style={[styles.cardTitle, { color: colors.text }]}>Avis Important</Text>
-          </View>
-          <Text style={[styles.cardText, { color: colors.textSecondary }]}>
-            Cette action initiera le processus de sign-off. Assurez-vous d'avoir complété toutes les préparations nécessaires avant de continuer.
-          </Text>
-        </View>
-
-        {/* Stats Overview */}
-        <View style={styles.statsContainer}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Vue d'ensemble de votre plan
-          </Text>
-          
-          <View style={styles.statsGrid}>
-            <View style={[styles.statCard, { backgroundColor: 'rgba(139, 92, 246, 0.1)', borderColor: 'rgba(139, 92, 246, 0.2)' }]}>
-              <MaterialCommunityIcons name="account-group" size={20} color={colors.purple.primary} />
-              <Text style={[styles.statValue, { color: colors.text }]}>{signOffStats.heirsCount}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Héritiers</Text>
-            </View>
-            
-            <View style={[styles.statCard, { backgroundColor: 'rgba(139, 92, 246, 0.1)', borderColor: 'rgba(139, 92, 246, 0.2)' }]}>
-              <MaterialIcons name="lock" size={20} color={colors.purple.primary} />
-              <Text style={[styles.statValue, { color: colors.text }]}>{signOffStats.vaultsCount}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Coffres-forts</Text>
-            </View>
-            
-            <View style={[styles.statCard, { backgroundColor: 'rgba(139, 92, 246, 0.1)', borderColor: 'rgba(139, 92, 246, 0.2)' }]}>
-              <MaterialIcons name="description" size={20} color={colors.purple.primary} />
-              <Text style={[styles.statValue, { color: colors.text }]}>{signOffStats.documentsCount}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Documents</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Sign-off Plan Details */}
-        <View style={[styles.planSection, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Détails de votre plan Sign-off
-          </Text>
-          
-          <View style={styles.planItem}>
-            <View style={[styles.planIcon, { backgroundColor: 'rgba(76, 175, 80, 0.2)' }]}>
-              <MaterialCommunityIcons name="account-group" size={20} color="#4CAF50" />
-            </View>
-            <View style={styles.planContent}>
-              <Text style={[styles.planTitle, { color: colors.text }]}>Héritiers notifiés</Text>
-              <Text style={[styles.planSubtitle, { color: colors.textSecondary }]}>
-                {signOffStats.heirsCount} héritiers sélectionnés
-              </Text>
-            </View>
-            <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
-          </View>
-          
-          <View style={styles.planItem}>
-            <View style={[styles.planIcon, { backgroundColor: 'rgba(33, 150, 243, 0.2)' }]}>
-              <MaterialIcons name="lock" size={20} color="#2196F3" />
-            </View>
-            <View style={styles.planContent}>
-              <Text style={[styles.planTitle, { color: colors.text }]}>Documents sécurisés</Text>
-              <Text style={[styles.planSubtitle, { color: colors.textSecondary }]}>
-                {signOffStats.documentsCount} éléments protégés
-              </Text>
-            </View>
-            <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
-          </View>
-          
-          <View style={styles.planItem}>
-            <View style={[styles.planIcon, { backgroundColor: 'rgba(156, 39, 176, 0.2)' }]}>
-              <MaterialIcons name="message" size={20} color="#9C27B0" />
-            </View>
-            <View style={styles.planContent}>
-              <Text style={[styles.planTitle, { color: colors.text }]}>Message final</Text>
-              <Text style={[styles.planSubtitle, { color: colors.textSecondary }]}>
-                {signOffStats.finalMessage}
-              </Text>
-            </View>
-            <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            style={[styles.signOffButton, { backgroundColor: colors.error }]}
-            onPress={handleSignOff}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="power-settings-new" size={20} color="white" />
-            <Text style={styles.signOffButtonText}>Initier le Sign-off</Text>
-            <MaterialIcons name="arrow-forward" size={20} color="white" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.setupButton, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}
-            onPress={() => router.push('/(tabs)/vaults')}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="settings" size={20} color={colors.purple.primary} />
-            <Text style={[styles.setupButtonText, { color: colors.text }]}>
-              Configurer le plan Sign-off
+        {/* Configure Sign-off Button */}
+        <TouchableOpacity
+          style={[styles.configureButton, { 
+            backgroundColor: colors.purple.primary,
+            borderColor: colors.purple.secondary
+          }]}
+          onPress={() => router.push('/signoff' as any)}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="cog" size={24} color="#FFFFFF" />
+          <View style={styles.configureButtonContent}>
+            <Text style={styles.configureButtonTitle}>Configurer Sign-off</Text>
+            <Text style={styles.configureButtonSubtitle}>
+              Choisissez votre méthode de détection
             </Text>
-          </TouchableOpacity>
-        </View>
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        {/* View Inheritance Plans Button */}
+        <TouchableOpacity
+          style={[styles.inheritancePlanButton, { 
+            backgroundColor: colors.purple.primary,
+            borderColor: colors.purple.secondary
+          }]}
+          onPress={() => router.push('/inheritance' as any)}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="file-document-outline" size={24} color="#FFFFFF" />
+          <View style={styles.inheritancePlanContent}>
+            <Text style={styles.inheritancePlanTitle}>Voir les Plans d'Héritage</Text>
+            <Text style={styles.inheritancePlanSubtitle}>
+              Gérez vos plans de succession numérique
+            </Text>
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -308,6 +216,63 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  inheritancePlanButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    shadowColor: '#8B5CF6',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  inheritancePlanContent: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  inheritancePlanTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  inheritancePlanSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  configureButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  configureButtonContent: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  configureButtonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  configureButtonSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
 });
 

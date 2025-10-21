@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { InheritancePlanDecrypted } from '@/types/heir';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 interface InheritancePlanCardProps {
   plan: InheritancePlanDecrypted;
@@ -20,12 +22,15 @@ export const InheritancePlanCard: React.FC<InheritancePlanCardProps> = ({
   onToggleStatus,
   showActions = true,
 }) => {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
+
   const getPlanTypeColor = (type: string) => {
     switch (type) {
       case 'full_access':
         return '#10b981';
       case 'partial_access':
-        return '#3b82f6';
+        return colors.purple.primary;
       case 'view_only':
         return '#f59e0b';
       case 'destroy':
@@ -35,16 +40,31 @@ export const InheritancePlanCard: React.FC<InheritancePlanCardProps> = ({
     }
   };
 
+  const getPlanTypeIcon = (type: string) => {
+    switch (type) {
+      case 'full_access':
+        return 'key';
+      case 'partial_access':
+        return 'key-outline';
+      case 'view_only':
+        return 'eye';
+      case 'destroy':
+        return 'delete-forever';
+      default:
+        return 'shield';
+    }
+  };
+
   const getPlanTypeLabel = (type: string) => {
     switch (type) {
       case 'full_access':
-        return 'Full Access';
+        return 'Accès Complet';
       case 'partial_access':
-        return 'Partial Access';
+        return 'Accès Partiel';
       case 'view_only':
-        return 'View Only';
+        return 'Lecture Seule';
       case 'destroy':
-        return 'Destroy Data';
+        return 'Détruire';
       default:
         return type;
     }
@@ -53,28 +73,28 @@ export const InheritancePlanCard: React.FC<InheritancePlanCardProps> = ({
   const getActivationMethodIcon = (method: string) => {
     switch (method) {
       case 'inactivity':
-        return 'time-outline';
+        return 'clock-outline';
       case 'death_certificate':
-        return 'document-text-outline';
+        return 'file-document';
       case 'manual_trigger':
-        return 'hand-left-outline';
+        return 'hand-back-right';
       case 'scheduled':
-        return 'calendar-outline';
+        return 'calendar';
       default:
-        return 'help-circle-outline';
+        return 'help-circle';
     }
   };
 
   const getActivationMethodLabel = (method: string) => {
     switch (method) {
       case 'inactivity':
-        return 'Inactivity';
+        return 'Inactivité';
       case 'death_certificate':
-        return 'Death Certificate';
+        return 'Certificat';
       case 'manual_trigger':
-        return 'Manual Trigger';
+        return 'Manuel';
       case 'scheduled':
-        return 'Scheduled';
+        return 'Programmé';
       default:
         return method;
     }
@@ -92,7 +112,11 @@ export const InheritancePlanCard: React.FC<InheritancePlanCardProps> = ({
 
   return (
     <TouchableOpacity
-      style={[styles.card, !plan.is_active && styles.inactiveCard]}
+      style={[
+        styles.card,
+        { backgroundColor: colors.card, borderColor: colors.border },
+        !plan.is_active && styles.inactiveCard
+      ]}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
     >
@@ -101,35 +125,40 @@ export const InheritancePlanCard: React.FC<InheritancePlanCardProps> = ({
           <View
             style={[
               styles.iconContainer,
-              { backgroundColor: getPlanTypeColor(plan.plan_type) },
+              { backgroundColor: getPlanTypeColor(plan.plan_type) + '20' },
             ]}
           >
-            <Ionicons name="shield-checkmark" size={24} color="#fff" />
+            <MaterialCommunityIcons 
+              name={getPlanTypeIcon(plan.plan_type) as any} 
+              size={24} 
+              color={getPlanTypeColor(plan.plan_type)} 
+            />
           </View>
           <View style={styles.headerInfo}>
-            <Text style={styles.planName}>{plan.plan_name}</Text>
-            <Text style={styles.planType}>{getPlanTypeLabel(plan.plan_type)}</Text>
+            <Text style={[styles.planName, { color: colors.text }]}>{plan.plan_name}</Text>
+            <View style={styles.planTypeRow}>
+              <View style={[styles.planTypeBadge, { backgroundColor: getPlanTypeColor(plan.plan_type) + '20' }]}>
+                <Text style={[styles.planType, { color: getPlanTypeColor(plan.plan_type) }]}>
+                  {getPlanTypeLabel(plan.plan_type)}
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
         {showActions && (
           <View style={styles.actions}>
             {onToggleStatus && (
               <TouchableOpacity onPress={onToggleStatus} style={styles.actionButton}>
-                <Ionicons
+                <MaterialCommunityIcons
                   name={plan.is_active ? 'pause-circle' : 'play-circle'}
                   size={24}
                   color={plan.is_active ? '#f59e0b' : '#10b981'}
                 />
               </TouchableOpacity>
             )}
-            {onEdit && (
-              <TouchableOpacity onPress={onEdit} style={styles.actionButton}>
-                <Ionicons name="pencil" size={20} color="#6b7280" />
-              </TouchableOpacity>
-            )}
             {onDelete && (
               <TouchableOpacity onPress={onDelete} style={styles.actionButton}>
-                <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                <MaterialCommunityIcons name="delete" size={20} color="#ef4444" />
               </TouchableOpacity>
             )}
           </View>
@@ -138,27 +167,33 @@ export const InheritancePlanCard: React.FC<InheritancePlanCardProps> = ({
 
       <View style={styles.details}>
         <View style={styles.detailRow}>
-          <Ionicons
-            name={getActivationMethodIcon(plan.activation_method)}
-            size={16}
-            color="#6b7280"
-          />
-          <Text style={styles.detailText}>
+          <View style={[styles.detailIconContainer, { backgroundColor: colors.purple.primary + '15' }]}>
+            <MaterialCommunityIcons
+              name={getActivationMethodIcon(plan.activation_method) as any}
+              size={14}
+              color={colors.purple.primary}
+            />
+          </View>
+          <Text style={[styles.detailText, { color: colors.textSecondary }]}>
             {getActivationMethodLabel(plan.activation_method)}
           </Text>
         </View>
         {plan.scheduled_date && (
           <View style={styles.detailRow}>
-            <Ionicons name="calendar" size={16} color="#6b7280" />
-            <Text style={styles.detailText}>
-              Scheduled: {formatDate(plan.scheduled_date)}
+            <View style={[styles.detailIconContainer, { backgroundColor: colors.purple.primary + '15' }]}>
+              <MaterialCommunityIcons name="calendar" size={14} color={colors.purple.primary} />
+            </View>
+            <Text style={[styles.detailText, { color: colors.textSecondary }]}>
+              Programmé: {formatDate(plan.scheduled_date)}
             </Text>
           </View>
         )}
         <View style={styles.detailRow}>
-          <Ionicons name="time" size={16} color="#6b7280" />
-          <Text style={styles.detailText}>
-            Created: {formatDate(plan.created_at)}
+          <View style={[styles.detailIconContainer, { backgroundColor: colors.purple.primary + '15' }]}>
+            <MaterialCommunityIcons name="clock-outline" size={14} color={colors.purple.primary} />
+          </View>
+          <Text style={[styles.detailText, { color: colors.textSecondary }]}>
+            Créé: {formatDate(plan.created_at)}
           </Text>
         </View>
       </View>
@@ -167,17 +202,19 @@ export const InheritancePlanCard: React.FC<InheritancePlanCardProps> = ({
         <View style={styles.badges}>
           {plan.is_active ? (
             <View style={[styles.badge, styles.activeBadge]}>
-              <Text style={styles.badgeText}>Active</Text>
+              <MaterialCommunityIcons name="check-circle" size={12} color="#fff" />
+              <Text style={styles.badgeText}>Actif</Text>
             </View>
           ) : (
             <View style={[styles.badge, styles.inactiveBadge]}>
-              <Text style={styles.badgeText}>Inactive</Text>
+              <MaterialCommunityIcons name="pause-circle" size={12} color="#fff" />
+              <Text style={styles.badgeText}>Inactif</Text>
             </View>
           )}
           {plan.is_triggered && (
             <View style={[styles.badge, styles.triggeredBadge]}>
-              <Ionicons name="warning" size={12} color="#fff" />
-              <Text style={styles.badgeText}>Triggered</Text>
+              <MaterialCommunityIcons name="alert" size={12} color="#fff" />
+              <Text style={styles.badgeText}>Déclenché</Text>
             </View>
           )}
         </View>
@@ -188,24 +225,24 @@ export const InheritancePlanCard: React.FC<InheritancePlanCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    borderWidth: 1,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   inactiveCard: {
-    opacity: 0.6,
+    opacity: 0.7,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -213,9 +250,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -224,39 +261,57 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   planName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 2,
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  planTypeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  planTypeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   planType: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: 13,
+    fontWeight: '600',
   },
   actions: {
     flexDirection: 'row',
     gap: 8,
   },
   actionButton: {
-    padding: 4,
+    padding: 6,
   },
   details: {
-    marginBottom: 12,
+    marginBottom: 16,
+    gap: 8,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+  },
+  detailIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
   detailText: {
     fontSize: 14,
-    color: '#4b5563',
-    marginLeft: 8,
+    fontWeight: '500',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   badges: {
     flexDirection: 'row',
@@ -266,7 +321,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 12,
     gap: 4,
   },

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Switch, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 import { Button } from '../ui/Button';
 import { Text } from '../ui/Text';
@@ -15,13 +16,13 @@ interface SecuritySettingsProps {
 export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ onBack }) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
+  const router = useRouter();
   
   // Use the auth context if needed in the future
   // const { user } = useAuth();
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
 
   useEffect(() => {
     checkBiometricAvailability();
@@ -67,33 +68,8 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ onBack }) =>
     }
   };
 
-  const handleChangePassword = async () => {
-    setChangePasswordLoading(true);
-    try {
-      // Implement password reset flow
-      Alert.alert(
-        'Changer le mot de passe',
-        'Un lien de réinitialisation sera envoyé à votre adresse email.',
-        [
-          {
-            text: 'Annuler',
-            style: 'cancel',
-          },
-          {
-            text: 'Envoyer le lien',
-            onPress: async () => {
-              // await sendPasswordResetEmail(user.email);
-              Alert.alert('Succès', 'Lien de réinitialisation envoyé à votre email');
-            },
-          },
-        ]
-      );
-    } catch (error) {
-      console.error('Error initiating password reset:', error);
-      Alert.alert('Erreur', 'Échec de l\'envoi de l\'email de réinitialisation');
-    } finally {
-      setChangePasswordLoading(false);
-    }
+  const handleChangePassword = () => {
+    router.push('/(auth)/change-password' as any);
   };
 
   return (
@@ -164,13 +140,8 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ onBack }) =>
           <TouchableOpacity 
             style={[styles.changeButton, { backgroundColor: colors.purple.primary }]}
             onPress={handleChangePassword}
-            disabled={changePasswordLoading}
           >
-            {changePasswordLoading ? (
-              <MaterialIcons name="hourglass-empty" size={20} color="white" />
-            ) : (
-              <Text style={styles.changeButtonText}>Changer</Text>
-            )}
+            <Text style={styles.changeButtonText}>Changer</Text>
           </TouchableOpacity>
         </View>
 

@@ -130,85 +130,6 @@ export const HeirForm: React.FC<HeirFormProps> = ({
         </View>
       </View>
 
-      <View style={[styles.section, { backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Paramètres d'Accès</Text>
-
-        <View style={styles.formGroup}>
-          <Text style={[styles.label, { color: colors.text }]}>Niveau d'Accès *</Text>
-          <View style={[styles.pickerContainer, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
-            <Picker
-              selectedValue={formData.access_level}
-              onValueChange={(value) => handleInputChange('access_level', value as AccessLevelType)}
-              style={[styles.picker, { color: colors.text }]}
-            >
-              <Picker.Item label="Lecture seule - Peut seulement voir" value="view" />
-              <Picker.Item label="Accès partiel - Peut voir et exporter" value="partial" />
-              <Picker.Item label="Accès complet - Peut tout faire" value="full" />
-            </Picker>
-          </View>
-          <Text style={[styles.hint, { color: colors.textSecondary }]}>
-            {formData.access_level === 'view' && 'L\'héritier peut seulement consulter les éléments'}
-            {formData.access_level === 'partial' && 'L\'héritier peut consulter et exporter les éléments'}
-            {formData.access_level === 'full' && 'L\'héritier a un contrôle total sur les éléments'}
-          </Text>
-        </View>
-      </View>
-
-      <View style={[styles.section, { backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Paramètres de Notification</Text>
-
-        <View style={styles.formGroup}>
-          <View style={styles.switchRow}>
-            <View style={styles.switchLabel}>
-              <Text style={[styles.label, { color: colors.text }]}>Notifier lors de l'Activation</Text>
-              <Text style={[styles.hint, { color: colors.textSecondary }]}>Envoyer une notification quand le plan est déclenché</Text>
-            </View>
-            <Switch
-              value={formData.notify_on_activation}
-              onValueChange={(value) => handleInputChange('notify_on_activation', value)}
-              trackColor={{ false: 'rgba(255, 255, 255, 0.1)', true: colors.purple.primary }}
-              thumbColor={formData.notify_on_activation ? '#fff' : '#f3f4f6'}
-            />
-          </View>
-        </View>
-
-        {formData.notify_on_activation && (
-          <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Délai de Notification (jours)</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)', color: colors.text }]}
-              value={formData.notification_delay_days.toString()}
-              onChangeText={(text) => handleInputChange('notification_delay_days', parseInt(text) || 0)}
-              placeholder="0"
-              placeholderTextColor={colors.textSecondary}
-              keyboardType="number-pad"
-            />
-            <Text style={[styles.hint, { color: colors.textSecondary }]}>
-              Nombre de jours d'attente avant de notifier l'héritier
-            </Text>
-          </View>
-        )}
-      </View>
-
-      <View style={[styles.section, { backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Statut</Text>
-
-        <View style={styles.formGroup}>
-          <View style={styles.switchRow}>
-            <View style={styles.switchLabel}>
-              <Text style={[styles.label, { color: colors.text }]}>Actif</Text>
-              <Text style={[styles.hint, { color: colors.textSecondary }]}>Les héritiers inactifs ne recevront pas d'accès</Text>
-            </View>
-            <Switch
-              value={formData.is_active}
-              onValueChange={(value) => handleInputChange('is_active', value)}
-              trackColor={{ false: 'rgba(255, 255, 255, 0.1)', true: colors.purple.primary }}
-              thumbColor={formData.is_active ? '#fff' : '#f3f4f6'}
-            />
-          </View>
-        </View>
-      </View>
-
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={[styles.cancelButton, { borderColor: 'rgba(255, 255, 255, 0.1)' }]} onPress={onCancel}>
           <Text style={[styles.cancelButtonText, { color: colors.text }]}>Annuler</Text>
@@ -280,7 +201,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: 12,
     padding: 16,
-    backgroundColor: '#fff',
     marginBottom: 20,
   },
   cancelButton: {
