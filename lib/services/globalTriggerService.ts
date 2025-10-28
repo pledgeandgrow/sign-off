@@ -1,21 +1,21 @@
 import { supabase } from '@/lib/supabase';
+import { notifyHeirs } from './heirNotificationService';
 
 export type GlobalTriggerMethod = 
   | 'inactivity' 
   | 'death_certificate' 
-  | 'trusted_contact' 
-  | 'heir_notification' 
-  | 'scheduled_date' 
-  | 'manual_trigger';
+  | 'manual_trigger' 
+  | 'scheduled';
 
 export interface GlobalTriggerSettings {
-  method: GlobalTriggerMethod;
-  settings?: {
-    days?: number;
-    contactEmail?: string;
-    contactName?: string;
-    date?: string;
+  global_trigger_method: GlobalTriggerMethod;
+  global_trigger_settings: {
+    inactivity_days?: number;
   };
+  global_scheduled_date?: string | null;
+  trusted_contact_email?: string | null;
+  trusted_contact_phone?: string | null;
+  last_activity?: string | null;
 }
 
 /**
@@ -24,26 +24,38 @@ export interface GlobalTriggerSettings {
  */
 export async function saveGlobalTrigger(
   userId: string,
-  method: GlobalTriggerMethod,
-  settings?: any
+  settings: Partial<GlobalTriggerSettings>
 ): Promise<void> {
   try {
-    // Update user's global trigger settings
-    const { error: userError } = await supabase
-      .from('users')
-      .update({
-        global_trigger_method: method,
-        global_trigger_settings: settings || {},
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId);
-
-    if (userError) {
-      console.error('Error saving global trigger to users table:', userError);
-      throw userError;
+    const updateData: any = {};
+    
+    if (settings.global_trigger_method) {
+      updateData.global_trigger_method = settings.global_trigger_method;
+    }
+    if (settings.global_trigger_settings) {
+      updateData.global_trigger_settings = settings.global_trigger_settings;
+    }
+    if (settings.global_scheduled_date !== undefined) {
+      updateData.global_scheduled_date = settings.global_scheduled_date;
+    }
+    if (settings.trusted_contact_email !== undefined) {
+      updateData.trusted_contact_email = settings.trusted_contact_email;
+    }
+    if (settings.trusted_contact_phone !== undefined) {
+      updateData.trusted_contact_phone = settings.trusted_contact_phone;
     }
 
-    console.log('Global trigger saved successfully:', { method, settings });
+    const { error } = await supabase
+      .from('users')
+      .update(updateData)
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Error saving global trigger:', error);
+      throw error;
+    }
+
+    console.log('Global trigger saved successfully:', updateData);
   } catch (error) {
     console.error('Error in saveGlobalTrigger:', error);
     throw error;
@@ -59,7 +71,7 @@ export async function getGlobalTrigger(
   try {
     const { data, error } = await supabase
       .from('users')
-      .select('global_trigger_method, global_trigger_settings')
+      .select('global_trigger_method, global_trigger_settings, global_scheduled_date, trusted_contact_email, trusted_contact_phone, last_activity')
       .eq('id', userId)
       .single();
 
@@ -73,8 +85,12 @@ export async function getGlobalTrigger(
     }
 
     return {
-      method: data.global_trigger_method as GlobalTriggerMethod,
-      settings: data.global_trigger_settings || {},
+      global_trigger_method: data.global_trigger_method as GlobalTriggerMethod,
+      global_trigger_settings: data.global_trigger_settings || { inactivity_days: 30 },
+      global_scheduled_date: data.global_scheduled_date,
+      trusted_contact_email: data.trusted_contact_email,
+      trusted_contact_phone: data.trusted_contact_phone,
+      last_activity: data.last_activity,
     };
   } catch (error) {
     console.error('Error in getGlobalTrigger:', error);
@@ -120,12 +136,12 @@ export async function applyGlobalTriggerToPlans(
       user_id: userId,
       trigger_reason: triggerReason,
       trigger_metadata: {
-        global_trigger_method: globalTrigger.method,
-        global_trigger_settings: globalTrigger.settings,
+        global_trigger_method: globalTrigger.global_trigger_method,
+        global_trigger_settings: globalTrigger.global_trigger_settings,
         triggered_at: new Date().toISOString(),
       },
       status: 'pending',
-      requires_verification: globalTrigger.method === 'death_certificate',
+      requires_verification: globalTrigger.global_trigger_method === 'death_certificate',
     }));
 
     const { error: triggersError } = await supabase
@@ -136,6 +152,18 @@ export async function applyGlobalTriggerToPlans(
       console.error('Error creating trigger records:', triggersError);
       throw triggersError;
     }
+
+    // Mark plans as triggered
+    await supabase
+      .from('inheritance_plans')
+      .update({ 
+        is_triggered: true, 
+        triggered_at: new Date().toISOString() 
+      })
+      .in('id', plans.map(p => p.id));
+
+    // Notify heirs
+    await notifyHeirs(userId, plans.map(p => p.id));
 
     console.log(`Global trigger applied to ${plans.length} active plans`);
   } catch (error) {
@@ -155,36 +183,35 @@ export async function checkGlobalTriggerConditions(userId: string): Promise<bool
       return false;
     }
 
-    const { method, settings } = globalTrigger;
+    const { global_trigger_method, global_trigger_settings, global_scheduled_date, last_activity } = globalTrigger;
 
-    switch (method) {
+    switch (global_trigger_method) {
       case 'inactivity':
-        // Check last login date
-        const { data: userData } = await supabase
-          .from('users')
-          .select('last_login_at')
-          .eq('id', userId)
-          .single();
-
-        if (userData?.last_login_at) {
-          const lastLogin = new Date(userData.last_login_at);
-          const daysSinceLogin = Math.floor(
-            (Date.now() - lastLogin.getTime()) / (1000 * 60 * 60 * 24)
+        // Check last activity date
+        if (last_activity) {
+          const lastActivityDate = new Date(last_activity);
+          const daysSinceActivity = Math.floor(
+            (Date.now() - lastActivityDate.getTime()) / (1000 * 60 * 60 * 24)
           );
-          return daysSinceLogin >= (settings?.days || 90);
+          const threshold = global_trigger_settings?.inactivity_days || 30;
+          return daysSinceActivity >= threshold;
         }
         break;
 
-      case 'scheduled_date':
+      case 'scheduled':
         // Check if scheduled date has passed
-        if (settings?.date) {
-          const scheduledDate = new Date(settings.date);
+        if (global_scheduled_date) {
+          const scheduledDate = new Date(global_scheduled_date);
           return Date.now() >= scheduledDate.getTime();
         }
         break;
 
       case 'manual_trigger':
         // Manual trigger is handled separately
+        return false;
+
+      case 'death_certificate':
+        // Death certificate requires manual verification
         return false;
 
       default:
@@ -195,5 +222,26 @@ export async function checkGlobalTriggerConditions(userId: string): Promise<bool
   } catch (error) {
     console.error('Error checking trigger conditions:', error);
     return false;
+  }
+}
+
+/**
+ * Update user's last activity timestamp
+ * Call this on any significant user action
+ */
+export async function updateLastActivity(userId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('users')
+      .update({ last_activity: new Date().toISOString() })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Error updating last activity:', error);
+      // Don't throw - activity tracking shouldn't break the app
+    }
+  } catch (error) {
+    console.error('Error in updateLastActivity:', error);
+    // Don't throw - activity tracking shouldn't break the app
   }
 }

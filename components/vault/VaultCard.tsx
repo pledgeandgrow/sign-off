@@ -1,5 +1,5 @@
 import { Vault, VaultCategory } from '@/types/vault';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '@/constants/Colors';
@@ -12,10 +12,10 @@ type VaultCardProps = {
 };
 
 const categoryIcons: Record<VaultCategory, string> = {
-  delete_after_death: 'delete-forever',
-  share_after_death: 'share',
+  delete_after_death: 'delete',
+  share_after_death: 'share-variant',
   handle_after_death: 'account-check',
-  sign_off_after_death: 'security',
+  sign_off_after_death: 'shield-lock',
 };
 
 const categoryLabels: Record<VaultCategory, string> = {
@@ -38,44 +38,41 @@ const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress, isSelected = fals
       style={[
         styles.container, 
         { 
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          backgroundColor: isSelected ? 'rgba(139, 92, 246, 0.15)' : 'rgba(255, 255, 255, 0.05)',
           borderColor: isSelected ? colors.purple.primary : 'rgba(255, 255, 255, 0.1)',
-          borderWidth: 1,
         }
       ]}
       onPress={onPress}
       activeOpacity={0.8}
     >
-      <View style={[styles.iconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
-        <MaterialIcons 
+      <View style={[styles.iconContainer, { backgroundColor: vault.color || colors.purple.primary }]}>
+        <MaterialCommunityIcons 
           name={iconName as any} 
-          size={20} 
-          color={colors.purple.primary}
+          size={24} 
+          color="#FFFFFF"
         />
       </View>
       <View style={styles.content}>
         <Text 
           style={[
             styles.title, 
-            { 
-              color: colors.text,
-              fontWeight: '600',
-              fontSize: 16,
-            }
+            { color: colors.text }
           ]}
           numberOfLines={1}
         >
           {label}
         </Text>
-        <Text style={[styles.itemCount, { color: colors.textSecondary, fontSize: 14 }]}>
-          {itemCount} {itemCount === 1 ? 'élément' : 'éléments'}
-        </Text>
+        <View style={styles.metaRow}>
+          <MaterialCommunityIcons name="file-document" size={14} color={colors.textSecondary} />
+          <Text style={[styles.itemCount, { color: colors.textSecondary }]}>
+            {itemCount} {itemCount === 1 ? 'élément' : 'éléments'}
+          </Text>
+        </View>
       </View>
-      <MaterialIcons 
+      <MaterialCommunityIcons 
         name="chevron-right" 
-        size={20} 
-        color={colors.textSecondary}
-        style={styles.chevron}
+        size={24} 
+        color={colors.textTertiary}
       />
     </TouchableOpacity>
   );
@@ -88,28 +85,32 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    width: '100%',
+    marginBottom: 12,
   },
   iconContainer: {
-    marginRight: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
   content: {
     flex: 1,
   },
   title: {
     fontSize: 16,
-    marginBottom: 4,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   itemCount: {
-    fontSize: 14,
-  },
-  chevron: {
-    marginLeft: 8,
+    fontSize: 13,
+    fontWeight: '500',
   },
 });
 

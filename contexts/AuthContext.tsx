@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'expo-router';
+import { Alert } from 'react-native';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { createUserProfile, updateUserActivity } from '@/lib/services/supabaseService';
 import { generateKeyPair, storePrivateKey, storePublicKey, deleteStoredKeys } from '@/lib/encryption';
+import { createAuditLog, getRiskLevel } from '@/lib/services/auditLogService';
 import type { User as DatabaseUser } from '@/types/database.types';
 import { ROUTES } from '@/constants/routes';
 
@@ -12,6 +14,9 @@ interface AppUser {
   full_name?: string;
   avatar_url?: string;
   public_key?: string;
+  account_locked?: boolean;
+  locked_until?: string;
+  failed_login_attempts?: number;
 }
 
 interface AuthContextType {
@@ -30,9 +35,16 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Security constants
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const ACTIVITY_CHECK_INTERVAL_MS = 60 * 1000; // 1 minute
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastActivity, setLastActivity] = useState<number>(Date.now());
   const router = useRouter();
 
   // Initialize auth state and listen for changes
@@ -47,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         loadUserProfile(session.user.id);
+        setLastActivity(Date.now());
       } else {
         setLoading(false);
       }
@@ -59,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         loadUserProfile(session.user.id);
+        setLastActivity(Date.now());
       } else {
         setUser(null);
         setLoading(false);
@@ -67,6 +81,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Session timeout monitoring
+  useEffect(() => {
+    if (!user) return;
+
+    const checkSessionTimeout = setInterval(() => {
+      const timeSinceLastActivity = Date.now() - lastActivity;
+      
+      if (timeSinceLastActivity >= SESSION_TIMEOUT_MS) {
+        console.log('🔒 Session timeout - logging out');
+        Alert.alert(
+          'Session expirée',
+          'Vous avez été déconnecté pour inactivité.',
+          [{ text: 'OK', onPress: () => signOut() }]
+        );
+      } else if (timeSinceLastActivity >= SESSION_TIMEOUT_MS - 60000) {
+        // Warn 1 minute before timeout
+        console.log('⚠️ Session expiring soon');
+      }
+    }, ACTIVITY_CHECK_INTERVAL_MS);
+
+    return () => clearInterval(checkSessionTimeout);
+  }, [user, lastActivity]);
+
+  // Update activity on user interaction
+  useEffect(() => {
+    if (!user) return;
+
+    const updateActivity = () => setLastActivity(Date.now());
+    
+    // Listen for any user interaction
+    if (typeof (globalThis as any).window !== 'undefined') {
+      const win = (globalThis as any).window;
+      win.addEventListener('touchstart', updateActivity);
+      win.addEventListener('click', updateActivity);
+      win.addEventListener('keydown', updateActivity);
+      
+      return () => {
+        win.removeEventListener('touchstart', updateActivity);
+        win.removeEventListener('click', updateActivity);
+        win.removeEventListener('keydown', updateActivity);
+      };
+    }
+  }, [user]);
 
   const loadUserProfile = async (userId: string) => {
     try {
@@ -129,6 +187,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           full_name: userData.full_name || undefined,
           avatar_url: userData.avatar_url || undefined,
           public_key: userData.public_key || undefined,
+          account_locked: userData.account_locked || false,
+          locked_until: userData.locked_until || undefined,
+          failed_login_attempts: userData.failed_login_attempts || 0,
         });
       }
     } catch (error) {
@@ -148,6 +209,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       console.log('🔐 Attempting to sign in:', email);
+
+      // Check if account is locked
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id, account_locked, locked_until, failed_login_attempts')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (existingUser) {
+        const userRecord = existingUser as any;
+        // Check if account is locked
+        if (userRecord.account_locked && userRecord.locked_until) {
+          const lockedUntil = new Date(userRecord.locked_until);
+          if (lockedUntil > new Date()) {
+            const minutesLeft = Math.ceil((lockedUntil.getTime() - Date.now()) / 60000);
+            throw new Error(`Compte verrouillé. Réessayez dans ${minutesLeft} minute(s).`);
+          } else {
+            // Unlock account if lockout period has passed
+            await supabase
+              .from('users')
+              .update({ 
+                account_locked: false, 
+                locked_until: null,
+                failed_login_attempts: 0 
+              } as any)
+              .eq('id', userRecord.id);
+          }
+        }
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -155,6 +246,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('❌ Sign in error:', error.message);
+        
+        // Increment failed login attempts
+        if (existingUser) {
+          const userRecord = existingUser as any;
+          const newFailedAttempts = (userRecord.failed_login_attempts || 0) + 1;
+          const shouldLock = newFailedAttempts >= MAX_FAILED_ATTEMPTS;
+          
+          await supabase
+            .from('users')
+            .update({
+              failed_login_attempts: newFailedAttempts,
+              account_locked: shouldLock,
+              locked_until: shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS).toISOString() : null,
+            } as any)
+            .eq('id', userRecord.id);
+
+          // Log failed login attempt
+          await createAuditLog({
+            user_id: userRecord.id,
+            action: 'failed_login',
+            resource_type: 'session',
+            risk_level: 'critical',
+            metadata: {
+              email,
+              attempts: newFailedAttempts,
+              locked: shouldLock,
+            },
+          });
+
+          if (shouldLock) {
+            throw new Error(`Trop de tentatives échouées. Compte verrouillé pour ${LOCKOUT_DURATION_MS / 60000} minutes.`);
+          }
+        }
+        
         throw error;
       }
 
@@ -163,6 +288,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       console.log('✅ Sign in successful, user ID:', data.user.id);
+
+      // Reset failed login attempts on successful login
+      await supabase
+        .from('users')
+        .update({ 
+          failed_login_attempts: 0,
+          account_locked: false,
+          locked_until: null,
+        } as any)
+        .eq('id', data.user.id);
+
+      // Log successful login
+      await createAuditLog({
+        user_id: data.user.id,
+        action: 'login',
+        resource_type: 'session',
+        risk_level: 'low',
+        metadata: { email },
+      });
 
       // Check if user profile exists
       const { data: profile, error: profileError } = await supabase
@@ -295,6 +439,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true);
+
+      // Log logout before clearing user
+      if (user) {
+        await createAuditLog({
+          user_id: user.id,
+          action: 'logout',
+          resource_type: 'session',
+          risk_level: 'low',
+        });
+      }
 
       // Sign out from Supabase
       const { error } = await supabase.auth.signOut();

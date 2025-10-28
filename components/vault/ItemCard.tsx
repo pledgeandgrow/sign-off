@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { VaultItem, VaultItemType } from '@/types/vault';
-import { MaterialIcons as Icons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
@@ -16,14 +16,25 @@ type VaultItemCardProps = {
 };
 
 const itemIcons: Record<VaultItemType, string> = {
-  password: 'key',
-  document: 'description',
-  video: 'videocam',
+  password: 'key-variant',
+  document: 'file-document',
+  video: 'video',
   image: 'image',
-  note: 'note',
-  crypto: 'currency-btc',
-  bank: 'account-balance',
-  other: 'more-horiz',
+  note: 'note-text',
+  crypto: 'bitcoin',
+  bank: 'bank',
+  other: 'dots-horizontal',
+};
+
+const itemTypeLabels: Record<VaultItemType, string> = {
+  password: 'Mot de passe',
+  document: 'Document',
+  video: 'Vidéo',
+  image: 'Image',
+  note: 'Note',
+  crypto: 'Crypto',
+  bank: 'Banque',
+  other: 'Autre',
 };
 
 export const VaultItemCard: React.FC<VaultItemCardProps> = ({ 
@@ -43,9 +54,8 @@ export const VaultItemCard: React.FC<VaultItemCardProps> = ({
       style={[
         styles.container,
         { 
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          backgroundColor: isSelected ? 'rgba(139, 92, 246, 0.15)' : 'rgba(255, 255, 255, 0.05)',
           borderColor: isSelected ? colors.purple.primary : 'rgba(255, 255, 255, 0.1)',
-          borderWidth: 1,
         }
       ]} 
       onPress={onPress}
@@ -53,35 +63,47 @@ export const VaultItemCard: React.FC<VaultItemCardProps> = ({
       activeOpacity={0.8}
     >
       <View style={[styles.iconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
-        <Icons 
-          name={iconName as keyof typeof Icons.glyphMap} 
+        <MaterialCommunityIcons 
+          name={iconName as any} 
           size={20} 
           color={colors.purple.primary}
         />
       </View>
       
       <View style={styles.content}>
-        <Text 
-          style={[styles.title, { color: colors.text }]} 
-          numberOfLines={1} 
-          ellipsizeMode="tail"
-        >
-          {item.title}
-        </Text>
-        <Text 
-          style={[styles.subtitle, { color: colors.textSecondary }]} 
-          numberOfLines={1} 
-          ellipsizeMode="tail"
-        >
-          {getItemSubtitle(item)}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text 
+            style={[styles.title, { color: colors.text }]} 
+            numberOfLines={1} 
+            ellipsizeMode="tail"
+          >
+            {item.title}
+          </Text>
+          {item.isEncrypted && (
+            <MaterialCommunityIcons name="lock" size={16} color={colors.purple.primary} />
+          )}
+        </View>
+        <View style={styles.metaRow}>
+          <View style={[styles.typeBadge, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
+            <Text style={[styles.typeText, { color: colors.purple.primary }]}>
+              {itemTypeLabels[item.type]}
+            </Text>
+          </View>
+          <Text 
+            style={[styles.subtitle, { color: colors.textSecondary }]} 
+            numberOfLines={1} 
+            ellipsizeMode="tail"
+          >
+            {getItemSubtitle(item)}
+          </Text>
+        </View>
       </View>
       
-      {item.isEncrypted && (
-        <View style={styles.actions}>
-          <Icons name="lock" size={16} color={colors.purple.primary} />
-        </View>
-      )}
+      <MaterialCommunityIcons 
+        name="chevron-right" 
+        size={20} 
+        color={colors.textTertiary}
+      />
     </TouchableOpacity>
   );
 };
@@ -121,6 +143,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderRadius: 12,
+    borderWidth: 1,
     marginBottom: 12,
   },
   iconContainer: {
@@ -129,21 +152,39 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
   content: {
     flex: 1,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
   title: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 4,
+    flex: 1,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  typeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  typeText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   subtitle: {
-    fontSize: 14,
-  },
-  actions: {
-    marginLeft: 8,
-    padding: 4,
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
   },
 });

@@ -11,7 +11,7 @@ import {
   TextStyle,
   SwitchProps
 } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Text } from '@/components/ui/Text';
@@ -101,7 +101,7 @@ export const ProfileMenuItem: React.FC<ProfileMenuItemProps> = ({
               }
             ]}
           >
-            <MaterialIcons 
+            <MaterialCommunityIcons 
               name={icon as any} 
               size={22} 
               color="#FFFFFF"
@@ -124,7 +124,7 @@ export const ProfileMenuItem: React.FC<ProfileMenuItemProps> = ({
         <View style={styles.rightContent}>
           {rightContent}
           {showChevron && !showSwitch && (
-            <MaterialIcons 
+            <MaterialCommunityIcons 
               name={isRTL ? 'chevron-left' : 'chevron-right'} 
               size={24} 
               color={colors.textSecondary}

@@ -10,16 +10,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 import { HeirList } from '@/components/heirs';
 import {
   getInheritancePlanWithHeirs,
-  getInheritanceTriggersByPlan,
   triggerInheritancePlanManually,
 } from '@/lib/services/inheritanceService';
-import { InheritancePlanWithHeirs, InheritanceTrigger } from '@/types/heir';
-import { InheritanceTriggerCard } from '@/components/inheritance';
+import { InheritancePlanWithHeirs } from '@/types/heir';
 
 export default function InheritancePlanDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -27,9 +27,10 @@ export default function InheritancePlanDetailScreen() {
   const { user } = useAuth();
   
   const [plan, setPlan] = useState<InheritancePlanWithHeirs | null>(null);
-  const [triggers, setTriggers] = useState<InheritanceTrigger[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTab, setSelectedTab] = useState<'overview' | 'heirs' | 'triggers'>('overview');
+  const [selectedTab, setSelectedTab] = useState<'overview' | 'heirs'>('overview');
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
 
   useEffect(() => {
     if (user && id) {
@@ -47,10 +48,8 @@ export default function InheritancePlanDetailScreen() {
       const privateKey = '';
       
       const planData = await getInheritancePlanWithHeirs(id, privateKey);
-      const triggersData = await getInheritanceTriggersByPlan(id);
       
       setPlan(planData);
-      setTriggers(triggersData);
     } catch (error) {
       console.error('Error loading plan details:', error);
       Alert.alert('Error', 'Failed to load plan details');
@@ -87,9 +86,9 @@ export default function InheritancePlanDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#3b82f6" />
+          <ActivityIndicator size="large" color={colors.purple.primary} />
         </View>
       </SafeAreaView>
     );
@@ -97,11 +96,11 @@ export default function InheritancePlanDetailScreen() {
 
   if (!plan) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>Plan not found</Text>
+          <Text style={[styles.errorText, { color: colors.textSecondary }]}>Plan not found</Text>
           <TouchableOpacity
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: colors.purple.primary }]}
             onPress={() => router.back()}
           >
             <Text style={styles.backButtonText}>Go Back</Text>
@@ -113,35 +112,26 @@ export default function InheritancePlanDetailScreen() {
 
   const renderOverview = () => (
     <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Plan Information</Text>
+      <View style={[styles.section, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Plan Information</Text>
         
         <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Plan Type</Text>
-          <Text style={styles.infoValue}>
+          <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Plan Type</Text>
+          <Text style={[styles.infoValue, { color: colors.text }]}>
             {plan.plan_type.replace('_', ' ').toUpperCase()}
           </Text>
         </View>
 
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Activation Method</Text>
-          <Text style={styles.infoValue}>
-            {plan.activation_method.replace('_', ' ').toUpperCase()}
+        <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+          <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Trigger Method</Text>
+          <Text style={[styles.infoValue, { color: colors.purple.primary }]}>
+            Global Settings
           </Text>
         </View>
 
-        {plan.scheduled_date && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Scheduled Date</Text>
-            <Text style={styles.infoValue}>
-              {new Date(plan.scheduled_date).toLocaleDateString()}
-            </Text>
-          </View>
-        )}
-
         <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Status</Text>
-          <View style={[styles.statusBadge, plan.is_active ? styles.activeBadge : styles.inactiveBadge]}>
+          <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Status</Text>
+          <View style={[styles.statusBadge, { backgroundColor: plan.is_active ? colors.purple.primary : 'rgba(255, 255, 255, 0.2)' }]}>
             <Text style={styles.statusText}>
               {plan.is_active ? 'Active' : 'Inactive'}
             </Text>
@@ -150,7 +140,7 @@ export default function InheritancePlanDetailScreen() {
 
         {plan.is_triggered && (
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Triggered</Text>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Triggered</Text>
             <Text style={[styles.infoValue, { color: '#ef4444' }]}>
               {new Date(plan.triggered_at!).toLocaleDateString()}
             </Text>
@@ -159,33 +149,40 @@ export default function InheritancePlanDetailScreen() {
       </View>
 
       {plan.instructions && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Instructions for Heirs</Text>
-          <Text style={styles.instructions}>{plan.instructions}</Text>
+        <View style={[styles.section, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Instructions for Heirs</Text>
+          <Text style={[styles.instructions, { color: colors.textSecondary }]}>{plan.instructions}</Text>
         </View>
       )}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Statistics</Text>
+      <View style={[styles.section, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Statistics</Text>
         
         <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{plan.heirs.length}</Text>
-            <Text style={styles.statLabel}>Total Heirs</Text>
+          <View style={[styles.statCard, { backgroundColor: 'rgba(139, 92, 246, 0.1)', borderColor: 'rgba(139, 92, 246, 0.2)' }]}>
+            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
+              <MaterialCommunityIcons name="account-group" size={20} color={colors.purple.primary} />
+            </View>
+            <Text style={[styles.statValue, { color: colors.text }]}>{plan.heirs.length}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Heirs</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{plan.vault_access_count}</Text>
-            <Text style={styles.statLabel}>Vault Access</Text>
+          <View style={[styles.statCard, { backgroundColor: 'rgba(139, 92, 246, 0.1)', borderColor: 'rgba(139, 92, 246, 0.2)' }]}>
+            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
+              <MaterialCommunityIcons name="lock" size={20} color={colors.purple.primary} />
+            </View>
+            <Text style={[styles.statValue, { color: colors.text }]}>{plan.vault_access_count}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Vault Access</Text>
           </View>
         </View>
       </View>
 
-      {!plan.is_triggered && plan.activation_method === 'manual_trigger' && (
+      {!plan.is_triggered && (
         <TouchableOpacity
-          style={styles.triggerButton}
+          style={[styles.triggerButton, { backgroundColor: colors.purple.primary }]}
           onPress={handleManualTrigger}
+          activeOpacity={0.8}
         >
-          <Ionicons name="flash" size={20} color="#fff" />
+          <MaterialCommunityIcons name="flash" size={20} color="#fff" />
           <Text style={styles.triggerButtonText}>Manually Trigger Plan</Text>
         </TouchableOpacity>
       )}
@@ -193,80 +190,51 @@ export default function InheritancePlanDetailScreen() {
   );
 
   const renderHeirs = () => (
-    <HeirList
-      heirs={plan.heirs}
-      onRefresh={loadPlanDetails}
-      onHeirPress={(heir) => {
-        // Navigate to heir details
-        console.log('Heir pressed:', heir);
-      }}
-      showActions={false}
-    />
+    <View style={styles.heirsContainer}>
+      <HeirList
+        heirs={plan.heirs}
+        onRefresh={loadPlanDetails}
+        onHeirPress={(heir) => {
+          // Navigate to heir details
+          console.log('Heir pressed:', heir);
+        }}
+        showActions={false}
+      />
+    </View>
   );
 
-  const renderTriggers = () => (
-    <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-      {triggers.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="flash-outline" size={64} color="#d1d5db" />
-          <Text style={styles.emptyText}>No triggers yet</Text>
-        </View>
-      ) : (
-        triggers.map((trigger) => (
-          <InheritanceTriggerCard
-            key={trigger.id}
-            trigger={trigger}
-            onPress={() => {
-              // Navigate to trigger details
-              console.log('Trigger pressed:', trigger);
-            }}
-            showActions={false}
-          />
-        ))
-      )}
-    </ScrollView>
-  );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: 'rgba(255, 255, 255, 0.1)' }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backIcon}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+          <MaterialCommunityIcons name="arrow-left" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title} numberOfLines={1}>{plan.plan_name}</Text>
+        <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{plan.plan_name}</Text>
         <View style={{ width: 24 }} />
       </View>
 
-      <View style={styles.tabs}>
+      <View style={[styles.tabs, { backgroundColor: colors.background, borderBottomColor: 'rgba(255, 255, 255, 0.1)' }]}>
         <TouchableOpacity
-          style={[styles.tab, selectedTab === 'overview' && styles.activeTab]}
+          style={[styles.tab, selectedTab === 'overview' && [styles.activeTab, { borderBottomColor: colors.purple.primary }]]}
           onPress={() => setSelectedTab('overview')}
         >
-          <Text style={[styles.tabText, selectedTab === 'overview' && styles.activeTabText]}>
+          <Text style={[styles.tabText, { color: colors.textSecondary }, selectedTab === 'overview' && [styles.activeTabText, { color: colors.purple.primary }]]}>
             Overview
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, selectedTab === 'heirs' && styles.activeTab]}
+          style={[styles.tab, selectedTab === 'heirs' && [styles.activeTab, { borderBottomColor: colors.purple.primary }]]}
           onPress={() => setSelectedTab('heirs')}
         >
-          <Text style={[styles.tabText, selectedTab === 'heirs' && styles.activeTabText]}>
+          <Text style={[styles.tabText, { color: colors.textSecondary }, selectedTab === 'heirs' && [styles.activeTabText, { color: colors.purple.primary }]]}>
             Heirs ({plan.heirs.length})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, selectedTab === 'triggers' && styles.activeTab]}
-          onPress={() => setSelectedTab('triggers')}
-        >
-          <Text style={[styles.tabText, selectedTab === 'triggers' && styles.activeTabText]}>
-            Triggers ({triggers.length})
           </Text>
         </TouchableOpacity>
       </View>
 
       {selectedTab === 'overview' && renderOverview()}
       {selectedTab === 'heirs' && renderHeirs()}
-      {selectedTab === 'triggers' && renderTriggers()}
     </SafeAreaView>
   );
 }
@@ -274,7 +242,6 @@ export default function InheritancePlanDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
   },
   header: {
     flexDirection: 'row',
@@ -282,9 +249,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   backIcon: {
     padding: 4,
@@ -292,16 +257,13 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '700',
     textAlign: 'center',
     marginHorizontal: 12,
   },
   tabs: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   tab: {
     flex: 1,
@@ -310,31 +272,27 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: '#3b82f6',
   },
   tabText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6b7280',
   },
   activeTabText: {
-    color: '#3b82f6',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   content: {
     flex: 1,
     padding: 16,
   },
   section: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
+    borderWidth: 1,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '700',
     marginBottom: 16,
   },
   infoRow: {
@@ -343,27 +301,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   infoLabel: {
     fontSize: 14,
-    color: '#6b7280',
   },
   infoValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
   },
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
-  },
-  activeBadge: {
-    backgroundColor: '#10b981',
-  },
-  inactiveBadge: {
-    backgroundColor: '#6b7280',
   },
   statusText: {
     fontSize: 12,
@@ -372,7 +322,6 @@ const styles = StyleSheet.create({
   },
   instructions: {
     fontSize: 14,
-    color: '#4b5563',
     lineHeight: 20,
   },
   statsGrid: {
@@ -381,28 +330,36 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 16,
     alignItems: 'center',
+    marginHorizontal: 4,
+    borderWidth: 1,
+  },
+  statIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   statValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#111827',
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    fontWeight: '500',
+    textAlign: 'center',
   },
   triggerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ef4444',
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 16,
     gap: 8,
   },
@@ -418,29 +375,21 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#6b7280',
     marginBottom: 16,
   },
   backButton: {
     paddingVertical: 12,
     paddingHorizontal: 24,
-    backgroundColor: '#3b82f6',
-    borderRadius: 8,
+    borderRadius: 12,
   },
   backButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
-  emptyContainer: {
+  heirsContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#6b7280',
-    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingTop: 20,
   },
 });

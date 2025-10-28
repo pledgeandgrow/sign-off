@@ -13,6 +13,9 @@ import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import * as ImagePicker from 'expo-image-picker';
 import * as WebBrowser from 'expo-web-browser';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+import { supabase } from '@/lib/supabase';
 
 type ViewType = 'main' | 'edit-profile' | 'security' | 'notifications';
 
@@ -68,6 +71,197 @@ export default function ProfileScreen() {
     } catch (error) {
       console.error('Error resetting onboarding:', error);
       Alert.alert('Erreur', 'Impossible de réinitialiser l\'introduction.');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      Alert.alert(
+        'Supprimer le compte',
+        'Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible et toutes vos données seront définitivement supprimées (coffres-forts, héritiers, plans d\'héritage).',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          {
+            text: 'Supprimer définitivement',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                if (!user?.id) {
+                  Alert.alert('Erreur', 'Utilisateur non connecté');
+                  return;
+                }
+
+                // Delete all user data in order (respecting foreign keys)
+                const { error: itemsError } = await supabase
+                  .from('vault_items')
+                  .delete()
+                  .in('vault_id', 
+                    supabase.from('vaults').select('id').eq('user_id', user.id)
+                  );
+
+                const { error: vaultsError } = await supabase
+                  .from('vaults')
+                  .delete()
+                  .eq('user_id', user.id);
+
+                const { error: accessError } = await supabase
+                  .from('heir_vault_access')
+                  .delete()
+                  .in('heir_id',
+                    supabase.from('heirs').select('id').eq('user_id', user.id)
+                  );
+
+                const { error: triggersError } = await supabase
+                  .from('inheritance_triggers')
+                  .delete()
+                  .eq('user_id', user.id);
+
+                const { error: plansError } = await supabase
+                  .from('inheritance_plans')
+                  .delete()
+                  .eq('user_id', user.id);
+
+                const { error: heirsError } = await supabase
+                  .from('heirs')
+                  .delete()
+                  .eq('user_id', user.id);
+
+                const { error: subscriptionsError } = await supabase
+                  .from('subscriptions')
+                  .delete()
+                  .eq('user_id', user.id);
+
+                const { error: userError } = await supabase
+                  .from('users')
+                  .delete()
+                  .eq('id', user.id);
+
+                // Delete auth user
+                const { error: authError } = await supabase.auth.admin.deleteUser(user.id);
+
+                if (vaultsError || heirsError || plansError || userError) {
+                  console.error('Delete errors:', { vaultsError, heirsError, plansError, userError });
+                  Alert.alert('Erreur', 'Échec de la suppression du compte. Veuillez réessayer.');
+                  return;
+                }
+
+                // Sign out
+                await signOut();
+                router.replace('/');
+                
+                Alert.alert('Compte supprimé', 'Votre compte et toutes vos données ont été supprimés.');
+              } catch (error) {
+                console.error('Error deleting account:', error);
+                Alert.alert('Erreur', 'Échec de la suppression du compte. Veuillez réessayer.');
+              }
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+    } catch (error) {
+      console.error('Error showing delete account alert:', error);
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      if (!user?.id) {
+        Alert.alert('Erreur', 'Utilisateur non connecté');
+        return;
+      }
+
+      Alert.alert(
+        'Exporter mes données',
+        'Vos données seront exportées au format JSON. Cela peut prendre quelques instants.',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          {
+            text: 'Exporter',
+            onPress: async () => {
+              try {
+                // Fetch all user data
+                const { data: userData } = await supabase
+                  .from('users')
+                  .select('*')
+                  .eq('id', user.id)
+                  .single();
+
+                const { data: vaults } = await supabase
+                  .from('vaults')
+                  .select('*')
+                  .eq('user_id', user.id);
+
+                const { data: vaultItems } = await supabase
+                  .from('vault_items')
+                  .select('*')
+                  .in('vault_id', vaults?.map(v => v.id) || []);
+
+                const { data: heirs } = await supabase
+                  .from('heirs')
+                  .select('*')
+                  .eq('user_id', user.id);
+
+                const { data: plans } = await supabase
+                  .from('inheritance_plans')
+                  .select('*')
+                  .eq('user_id', user.id);
+
+                const { data: subscriptions } = await supabase
+                  .from('subscriptions')
+                  .select('*')
+                  .eq('user_id', user.id);
+
+                // Create export object
+                const exportData = {
+                  export_info: {
+                    app: 'Sign-Off',
+                    version: '1.0.0',
+                    exported_at: new Date().toISOString(),
+                    user_id: user.id,
+                  },
+                  user: userData,
+                  vaults: vaults || [],
+                  vault_items: vaultItems || [],
+                  heirs: heirs || [],
+                  inheritance_plans: plans || [],
+                  subscriptions: subscriptions || [],
+                };
+
+                // Convert to JSON
+                const jsonString = JSON.stringify(exportData, null, 2);
+                
+                // Save to file
+                const fileName = `sign-off-export-${new Date().toISOString().split('T')[0]}.json`;
+                const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+                
+                await FileSystem.writeAsStringAsync(fileUri, jsonString, {
+                  encoding: FileSystem.EncodingType.UTF8,
+                });
+
+                // Share the file
+                const canShare = await Sharing.isAvailableAsync();
+                if (canShare) {
+                  await Sharing.shareAsync(fileUri, {
+                    mimeType: 'application/json',
+                    dialogTitle: 'Exporter mes données Sign-Off',
+                  });
+                } else {
+                  Alert.alert(
+                    'Export réussi',
+                    `Vos données ont été exportées vers:\n${fileUri}`
+                  );
+                }
+              } catch (error) {
+                console.error('Error exporting data:', error);
+                Alert.alert('Erreur', 'Échec de l\'export des données. Veuillez réessayer.');
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error showing export data alert:', error);
     }
   };
 
@@ -162,17 +356,17 @@ export default function ProfileScreen() {
 
       <ProfileSection title="Compte">
         <ProfileMenuItem
-          icon="person"
+          icon="account"
           label="Informations personnelles"
           onPress={handleEditProfile}
         />
         <ProfileMenuItem
-          icon="security"
+          icon="shield-lock-outline"
           label="Sécurité"
           onPress={handleSecurityPress}
         />
         <ProfileMenuItem
-          icon="notifications"
+          icon="bell-outline"
           label="Notifications"
           onPress={handleNotificationPress}
         />
@@ -180,25 +374,63 @@ export default function ProfileScreen() {
 
       <ProfileSection title="Support">
         <ProfileMenuItem
-          icon="help"
+          icon="help-circle-outline"
           label="Aide & Support"
           onPress={() => WebBrowser.openBrowserAsync('https://heriwill.com/contact')}
         />
         <ProfileMenuItem
-          icon="school"
+          icon="school-outline"
           label="Revoir l'introduction"
           onPress={handleViewOnboarding}
         />
         <ProfileMenuItem
-          icon="info"
+          icon="information-outline"
           label="À propos de Sign-off"
           onPress={() => WebBrowser.openBrowserAsync('https://heriwill.com/about')}
         />
       </ProfileSection>
 
+      <ProfileSection title="Légal">
+        <ProfileMenuItem
+          icon="shield-lock"
+          label="Politique de confidentialité"
+          onPress={() => WebBrowser.openBrowserAsync('https://heriwill.com/legal/privacy')}
+        />
+        <ProfileMenuItem
+          icon="file-document-outline"
+          label="Conditions d'utilisation"
+          onPress={() => WebBrowser.openBrowserAsync('https://heriwill.com/legal/terms')}
+        />
+        <ProfileMenuItem
+          icon="cookie-outline"
+          label="Politique des cookies"
+          onPress={() => WebBrowser.openBrowserAsync('https://heriwill.com/legal/cookies')}
+        />
+        <ProfileMenuItem
+          icon="shield-account"
+          label="Protection des données (RGPD)"
+          onPress={() => WebBrowser.openBrowserAsync('https://heriwill.com/legal/gdpr')}
+        />
+      </ProfileSection>
+
+      <ProfileSection title="Mes données (RGPD)">
+        <ProfileMenuItem
+          icon="download"
+          label="Exporter mes données"
+          onPress={handleExportData}
+        />
+        <ProfileMenuItem
+          icon="delete-forever"
+          label="Supprimer mon compte"
+          onPress={handleDeleteAccount}
+          labelStyle={{ color: colors.error }}
+          iconColor={colors.error}
+        />
+      </ProfileSection>
+
       <View style={styles.signOutButton}>
         <ProfileMenuItem
-          icon="logout"
+          icon="logout-variant"
           label="Se déconnecter"
           onPress={handleSignOut}
           labelStyle={{ color: colors.error }}

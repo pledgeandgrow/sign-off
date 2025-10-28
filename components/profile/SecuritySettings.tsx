@@ -120,10 +120,14 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ onBack }) =>
         </View>
 
         {/* Change Password */}
-        <View style={[styles.settingCard, { 
-          backgroundColor: colors.backgroundSecondary,
-          borderColor: colors.border
-        }]}>
+        <TouchableOpacity 
+          style={[styles.settingCard, { 
+            backgroundColor: colors.backgroundSecondary,
+            borderColor: colors.border
+          }]}
+          onPress={handleChangePassword}
+          activeOpacity={0.7}
+        >
           <View style={styles.settingHeader}>
             <View style={[styles.iconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
               <MaterialIcons name="lock" size={24} color={colors.purple.primary} />
@@ -136,20 +140,19 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ onBack }) =>
                 Mettez à jour le mot de passe de votre compte
               </Text>
             </View>
+            <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
           </View>
-          <TouchableOpacity 
-            style={[styles.changeButton, { backgroundColor: colors.purple.primary }]}
-            onPress={handleChangePassword}
-          >
-            <Text style={styles.changeButtonText}>Changer</Text>
-          </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
 
         {/* Two-Factor Authentication */}
-        <View style={[styles.settingCard, { 
-          backgroundColor: colors.backgroundSecondary,
-          borderColor: colors.border
-        }]}>
+        <TouchableOpacity 
+          style={[styles.settingCard, { 
+            backgroundColor: colors.backgroundSecondary,
+            borderColor: colors.border
+          }]}
+          onPress={() => router.push('/(auth)/2fa-setup')}
+          activeOpacity={0.7}
+        >
           <View style={styles.settingHeader}>
             <View style={[styles.iconContainer, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
               <MaterialIcons name="security" size={24} color={colors.purple.primary} />
@@ -162,14 +165,9 @@ export const SecuritySettings: React.FC<SecuritySettingsProps> = ({ onBack }) =>
                 Ajoutez une couche de sécurité supplémentaire à votre compte
               </Text>
             </View>
+            <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
           </View>
-          <TouchableOpacity 
-            style={[styles.changeButton, { backgroundColor: colors.purple.primary }]}
-            onPress={() => Alert.alert('Info', 'Fonctionnalité à venir')}
-          >
-            <Text style={styles.changeButtonText}>Activer</Text>
-          </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
 
         {/* Security Info Card */}
         <View style={[styles.infoCard, { 
@@ -221,7 +219,6 @@ const styles = StyleSheet.create({
   settingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
   },
   iconContainer: {
     width: 40,
@@ -242,17 +239,6 @@ const styles = StyleSheet.create({
   settingDescription: {
     fontSize: 14,
     color: '#666',
-  },
-  changeButton: {
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  changeButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
   },
   infoCard: {
     flexDirection: 'row',

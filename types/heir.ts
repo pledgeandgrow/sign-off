@@ -57,8 +57,6 @@ export interface HeirDecrypted {
 export interface InheritancePlanBase {
   plan_name: string;
   plan_type: InheritancePlanType;
-  activation_method: ActivationMethodType;
-  scheduled_date: string | null;
   instructions_encrypted: string | null;
 }
 
@@ -169,10 +167,5 @@ export interface InheritancePlanStatistics {
     view_only: number;
     destroy: number;
   };
-  plans_by_activation: {
-    inactivity: number;
-    death_certificate: number;
-    manual_trigger: number;
-    scheduled: number;
-  };
+  // Note: Activation method is now global per user, not per plan
 }

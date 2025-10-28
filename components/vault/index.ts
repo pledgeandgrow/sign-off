@@ -1,6 +1,7 @@
 // Vault Components
 export { VaultCard } from './VaultCard';
 export { VaultHeader } from './VaultHeader';
+export { SharedVaultCard } from './SharedVaultCard';
 
 // Form Components
 export { AddVault } from './AddVault';

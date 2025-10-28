@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, ScrollView, TouchableOpacity, Platform } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { View, StyleSheet, TextInput, ScrollView, TouchableOpacity, Platform, Text } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { VaultCategory } from '@/types/vault';
-import { Button } from '../ui/Button';
-import { Text as CustomText } from '../ui/Text';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 type VaultFormData = {
   name: string;
@@ -16,23 +16,27 @@ type VaultFormData = {
 const CATEGORIES = [
   {
     value: 'delete_after_death',
-    label: 'Delete After Death',
-    description: 'Local files that will be automatically deleted after your passing',
+    label: 'Supprimer après la mort',
+    description: 'Fichiers locaux qui seront automatiquement supprimés',
+    icon: 'delete',
   },
   {
     value: 'share_after_death',
-    label: 'Share After Death',
-    description: 'Information to be shared with your heirs after verification',
+    label: 'Partager après la mort',
+    description: 'Informations à partager avec vos héritiers',
+    icon: 'share-variant',
   },
   {
     value: 'handle_after_death',
-    label: 'Handle After Death',
-    description: 'Tasks for someone you trust to manage after your passing',
+    label: 'Gérer après la mort',
+    description: 'Tâches pour quelqu’un de confiance',
+    icon: 'account-check',
   },
   {
     value: 'sign_off_after_death',
-    label: 'Sign Off After Death (Premium)',
-    description: 'Our team will handle removing your digital footprint',
+    label: 'Sign-off après la mort',
+    description: 'Notre équipe gère votre empreinte numérique',
+    icon: 'shield-lock',
   },
 ] as const;
 
@@ -47,6 +51,9 @@ export const AddVault: React.FC<{
   onCancel,
   isSubmitting = false,
 }) => {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
+  
   const [formData, setFormData] = useState<VaultFormData>({
     name: '',
     description: '',
@@ -67,21 +74,33 @@ export const AddVault: React.FC<{
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          {initialData?.name ? 'Éditer le coffre-fort' : 'Nouveau coffre-fort'}
+        </Text>
+        <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+          Créez un espace sécurisé pour vos données
+        </Text>
+      </View>
+
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.formGroup}>
-          <CustomText style={styles.label}>Vault Name</CustomText>
-          <View style={styles.inputContainer}>
+          <Text style={[styles.label, { color: colors.text }]}>Nom du coffre-fort</Text>
+          <View style={[styles.inputContainer, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+            <MaterialCommunityIcons name="lock" size={20} color={colors.purple.primary} style={styles.inputIcon} />
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: colors.text }]}
               value={formData.name}
               onChangeText={(text) => setFormData({ ...formData, name: text })}
-              placeholder="Enter vault name"
-              placeholderTextColor="#999"
+              placeholder="Mon coffre-fort"
+              placeholderTextColor={colors.textTertiary}
               autoFocus
               autoCapitalize="words"
               autoCorrect={false}
@@ -91,14 +110,14 @@ export const AddVault: React.FC<{
         </View>
 
         <View style={styles.formGroup}>
-          <CustomText style={styles.label}>Description (Optional)</CustomText>
-          <View style={[styles.inputContainer, styles.textAreaContainer]}>
+          <Text style={[styles.label, { color: colors.text }]}>Description (optionnel)</Text>
+          <View style={[styles.inputContainer, styles.textAreaContainer, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[styles.input, styles.textArea, { color: colors.text }]}
               value={formData.description}
               onChangeText={(text) => setFormData({ ...formData, description: text })}
-              placeholder="Enter a description for this vault"
-              placeholderTextColor="#999"
+              placeholder="Décrivez le contenu de ce coffre-fort..."
+              placeholderTextColor={colors.textTertiary}
               multiline
               numberOfLines={3}
               textAlignVertical="top"
@@ -108,23 +127,30 @@ export const AddVault: React.FC<{
         </View>
 
         <View style={styles.formGroup}>
-          <CustomText style={styles.label}>Category</CustomText>
+          <Text style={[styles.label, { color: colors.text }]}>Catégorie</Text>
           <View style={styles.categoriesContainer}>
             {CATEGORIES.map((cat) => (
               <TouchableOpacity
                 key={cat.value}
                 style={[
                   styles.categoryButton,
-                  formData.category === cat.value && styles.categoryButtonActive
+                  { 
+                    backgroundColor: formData.category === cat.value ? 'rgba(139, 92, 246, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                    borderColor: formData.category === cat.value ? colors.purple.primary : 'rgba(255, 255, 255, 0.1)'
+                  }
                 ]}
                 onPress={() => setFormData({ ...formData, category: cat.value as VaultCategory })}
+                activeOpacity={0.8}
               >
+                <View style={[styles.categoryIcon, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
+                  <MaterialCommunityIcons name={cat.icon as any} size={20} color={colors.purple.primary} />
+                </View>
                 <View style={styles.categoryContent}>
-                  <CustomText style={styles.categoryLabel}>{cat.label}</CustomText>
-                  <CustomText style={styles.categoryDescription}>{cat.description}</CustomText>
+                  <Text style={[styles.categoryLabel, { color: colors.text }]}>{cat.label}</Text>
+                  <Text style={[styles.categoryDescription, { color: colors.textSecondary }]}>{cat.description}</Text>
                 </View>
                 {formData.category === cat.value && (
-                  <MaterialIcons name="check-circle" size={20} color="#000" />
+                  <MaterialCommunityIcons name="check-circle" size={20} color={colors.purple.primary} />
                 )}
               </TouchableOpacity>
             ))}
@@ -132,22 +158,28 @@ export const AddVault: React.FC<{
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
-        <Button 
-          variant="outline" 
-          onPress={onCancel} 
-          style={styles.cancelButton}
+      <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: 'rgba(255, 255, 255, 0.1)' }]}>
+        <TouchableOpacity 
+          style={[styles.cancelButton, { borderColor: 'rgba(255, 255, 255, 0.2)' }]}
+          onPress={onCancel}
+          activeOpacity={0.8}
         >
-          Cancel
-        </Button>
-        <Button 
-          onPress={handleSubmit} 
+          <Text style={[styles.buttonText, { color: colors.text }]}>Annuler</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[
+            styles.submitButton, 
+            { backgroundColor: colors.purple.primary },
+            (!formData.name.trim() || isSubmitting) && styles.submitButtonDisabled
+          ]}
+          onPress={handleSubmit}
           disabled={!formData.name.trim() || isSubmitting}
-          loading={isSubmitting}
-          style={styles.submitButton}
+          activeOpacity={0.8}
         >
-          {initialData?.name ? 'Update Vault' : 'Create Vault'}
-        </Button>
+          <Text style={styles.submitButtonText}>
+            {isSubmitting ? 'Création...' : (initialData?.name ? 'Mettre à jour' : 'Créer')}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -156,127 +188,126 @@ export const AddVault: React.FC<{
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+  },
+  header: {
+    padding: 20,
+    paddingBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 15,
+    lineHeight: 20,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    padding: 20,
     paddingBottom: 100,
   },
   formGroup: {
     marginBottom: 24,
   },
+  label: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
   inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E5E5',
     borderRadius: 12,
-    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
-    fontSize: 16,
-    color: '#000',
-    padding: 16,
-    height: 52,
-    fontFamily: 'Inter-Regular',
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    marginBottom: 16,
+    flex: 1,
+    fontSize: 15,
+    paddingVertical: 16,
   },
   textAreaContainer: {
     minHeight: 120,
+    alignItems: 'flex-start',
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   textArea: {
-    height: '100%',
-    textAlignVertical: 'top',
-    paddingTop: 16,
     minHeight: 100,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000',
-    marginBottom: 8,
-    fontFamily: 'Inter-Medium',
+    textAlignVertical: 'top',
   },
   categoriesContainer: {
-    marginTop: 8,
-    marginBottom: 20,
+    gap: 12,
   },
   categoryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
     borderRadius: 12,
-    marginBottom: 12,
-    backgroundColor: '#fff',
   },
-  categoryButtonActive: {
-    borderColor: '#000',
-    backgroundColor: '#F5F5F5',
+  categoryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   categoryContent: {
     flex: 1,
-    marginRight: 12,
   },
   categoryLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000',
+    fontSize: 15,
+    fontWeight: '600',
     marginBottom: 4,
   },
-  categoryLabelActive: {
-    color: '#1976d2',
-  },
   categoryDescription: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
   footer: {
     flexDirection: 'row',
-    padding: 16,
+    padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    backgroundColor: '#fff',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
+    gap: 12,
     ...Platform.select({
       ios: {
-        paddingBottom: 34, // Add extra padding for iPhone home indicator
+        paddingBottom: 34,
       },
     }),
   },
   cancelButton: {
     flex: 1,
-    marginRight: 8,
-    backgroundColor: 'white',
+    paddingVertical: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   submitButton: {
     flex: 1,
-    backgroundColor: '#4F46E5',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   submitButtonDisabled: {
-    backgroundColor: '#A5B4FC',
-    opacity: 0.7,
+    opacity: 0.5,
   },
   buttonText: {
-    color: 'black',
-    fontWeight: '500',
-  },
-  cancelButtonText: {
-    color: '#374151',
+    fontSize: 16,
+    fontWeight: '600',
   },
   submitButtonText: {
-    color: 'white',
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

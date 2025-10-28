@@ -1,19 +1,30 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, Text, Alert } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { VaultItem, VaultItemType } from '@/types/vault';
-import { Text } from '../ui/Text';
-import { useTheme } from '@/contexts/ThemeContext';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
-const itemIcons: Record<VaultItemType, keyof typeof MaterialIcons.glyphMap> = {
-  password: 'vpn-key',
-  document: 'description',
-  video: 'videocam',
+const itemIcons: Record<VaultItemType, string> = {
+  password: 'key-variant',
+  document: 'file-document',
+  video: 'video',
   image: 'image',
-  note: 'sticky-note-2',
-  crypto: 'currency-bitcoin',
-  bank: 'account-balance',
-  other: 'more-horiz',
+  note: 'note-text',
+  crypto: 'bitcoin',
+  bank: 'bank',
+  other: 'dots-horizontal',
+};
+
+const itemTypeLabels: Record<VaultItemType, string> = {
+  password: 'Mot de passe',
+  document: 'Document',
+  video: 'Vidéo',
+  image: 'Image',
+  note: 'Note',
+  crypto: 'Crypto',
+  bank: 'Banque',
+  other: 'Autre',
 };
 
 const formatDate = (dateString: string) => {
@@ -26,10 +37,22 @@ const formatDate = (dateString: string) => {
   });
 };
 
-export const ViewItem: React.FC<{ item: VaultItem; onEdit: () => void }> = ({ item, onEdit }) => {
-  const { theme } = useTheme();
-  const iconName = itemIcons[item.type] || 'more-horiz' as const;
-  const styles = createStyles(theme);
+export const ViewItem: React.FC<{ 
+  item: VaultItem; 
+  onEdit: () => void;
+  onDelete?: () => void;
+  onBack?: () => void;
+}> = ({ item, onEdit, onDelete, onBack }) => {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
+  const [showPassword, setShowPassword] = useState(true); // Show by default
+  const iconName = itemIcons[item.type] || 'dots-horizontal';
+  const styles = createStyles();
+
+  const handleDelete = () => {
+    // Call parent's onDelete which handles confirmation
+    onDelete?.();
+  };
 
   const renderMetadata = () => {
     const { metadata, type } = item;
@@ -38,19 +61,35 @@ export const ViewItem: React.FC<{ item: VaultItem; onEdit: () => void }> = ({ it
       case 'password':
         return (
           <View style={styles.metadataSection}>
-            <Text style={styles.label}>Username:</Text>
-            <Text style={styles.value}>{(metadata as any).username || 'Not set'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Détails</Text>
+            <View style={[styles.fieldCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Nom d'utilisateur</Text>
+              <Text style={[styles.fieldValue, { color: colors.text }]}>{(metadata as any).username || 'Non défini'}</Text>
+            </View>
             
-            <Text style={styles.label}>Password:</Text>
-            <Text style={styles.value}>••••••••</Text>
+            <View style={[styles.fieldCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+              <View style={styles.fieldHeader}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Mot de passe</Text>
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <MaterialCommunityIcons 
+                    name={showPassword ? 'eye-off' : 'eye'} 
+                    size={20} 
+                    color={colors.purple.primary} 
+                  />
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.fieldValue, { color: '#FFFFFF' }]}>
+                {showPassword ? ((metadata as any).password || 'Aucun mot de passe') : '••••••••••••'}
+              </Text>
+            </View>
             
             {(metadata as any).url && (
-              <>
-                <Text style={styles.label}>URL:</Text>
-                <Text style={[styles.value, styles.link]} numberOfLines={1} ellipsizeMode="tail">
+              <View style={[styles.fieldCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>URL</Text>
+                <Text style={[styles.fieldValue, styles.link, { color: colors.purple.primary }]} numberOfLines={1}>
                   {(metadata as any).url}
                 </Text>
-              </>
+              </View>
             )}
           </View>
         );
@@ -82,10 +121,12 @@ export const ViewItem: React.FC<{ item: VaultItem; onEdit: () => void }> = ({ it
       case 'note':
         return (
           <View style={styles.metadataSection}>
-            <Text style={styles.label}>Note:</Text>
-            <Text style={[styles.value, styles.noteText]}>
-              {(metadata as any).content || 'No content'}
-            </Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Contenu</Text>
+            <View style={[styles.noteCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+              <Text style={[styles.noteText, { color: colors.text }]}>
+                {(metadata as any).content || 'Aucun contenu'}
+              </Text>
+            </View>
           </View>
         );
         
@@ -106,46 +147,61 @@ export const ViewItem: React.FC<{ item: VaultItem; onEdit: () => void }> = ({ it
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.card }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header with back button */}
       <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.iconContainer}>
-            <MaterialIcons name={iconName} size={24} color={theme.colors.primary} />
-          </View>
-          <Text style={[styles.title, { color: theme.colors.text }]}>{item.title}</Text>
-        </View>
-        <TouchableOpacity onPress={onEdit} style={styles.editButton}>
-          <MaterialIcons name="edit" size={20} color={theme.colors.primary} />
+        <TouchableOpacity onPress={onBack} style={[styles.backButton, { backgroundColor: 'rgba(255, 255, 255, 0.05)' }]}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color={colors.text} />
         </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+          <View style={[styles.typeBadge, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
+            <Text style={[styles.typeBadgeText, { color: colors.purple.primary }]}>
+              {itemTypeLabels[item.type]}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={onEdit} style={[styles.actionButton, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
+            <MaterialCommunityIcons name="pencil" size={20} color={colors.purple.primary} />
+          </TouchableOpacity>
+          {onDelete && (
+            <TouchableOpacity onPress={handleDelete} style={[styles.actionButton, { backgroundColor: 'rgba(239, 68, 68, 0.2)' }]}>
+              <MaterialCommunityIcons name="delete" size={20} color="#EF4444" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
       
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: 'rgba(255, 255, 255, 0.1)' }]} />
       
       <View style={styles.detailsContainer}>
-        <View style={styles.detailRow}>
-          <Text style={styles.label}>Type:</Text>
-          <Text style={styles.value}>
-            {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
-          </Text>
-        </View>
-        
-        <View style={styles.detailRow}>
-          <Text style={styles.label}>Created:</Text>
-          <Text style={styles.value}>{formatDate(item.createdAt)}</Text>
-        </View>
-        
-        <View style={styles.detailRow}>
-          <Text style={styles.label}>Last Updated:</Text>
-          <Text style={styles.value}>{formatDate(item.updatedAt)}</Text>
+        <View style={[styles.infoCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+          <View style={styles.infoRow}>
+            <MaterialCommunityIcons name="calendar" size={16} color={colors.textSecondary} />
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Créé le</Text>
+            <Text style={[styles.infoValue, { color: colors.text }]}>{formatDate(item.createdAt)}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <MaterialCommunityIcons name="update" size={16} color={colors.textSecondary} />
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Modifié le</Text>
+            <Text style={[styles.infoValue, { color: colors.text }]}>{formatDate(item.updatedAt)}</Text>
+          </View>
+          {item.isEncrypted && (
+            <View style={styles.infoRow}>
+              <MaterialCommunityIcons name="lock" size={16} color={colors.purple.primary} />
+              <Text style={[styles.infoLabel, { color: colors.purple.primary }]}>Chiffré</Text>
+            </View>
+          )}
         </View>
         
         {item.tags && item.tags.length > 0 && (
-          <View style={styles.detailRow}>
-            <Text style={styles.label}>Tags:</Text>
+          <View style={styles.tagsSection}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Tags</Text>
             <View style={styles.tagsContainer}>
               {item.tags.map((tag) => (
-                <View key={tag} style={[styles.tag, { backgroundColor: theme.colors.background }]}>
-                  <Text style={[styles.tagText, { color: theme.colors.text }]}>{tag}</Text>
+                <View key={tag} style={[styles.tag, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
+                  <Text style={[styles.tagText, { color: colors.purple.primary }]}>{tag}</Text>
                 </View>
               ))}
             </View>
@@ -161,37 +217,49 @@ export const ViewItem: React.FC<{ item: VaultItem; onEdit: () => void }> = ({ it
 const createStyles = () => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
-    padding: 16,
+    padding: 20,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
+    gap: 12,
   },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  iconContainer: {
+  backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+  },
+  headerContent: {
+    flex: 1,
   },
   title: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: '700',
+    marginBottom: 6,
   },
-  editButton: {
-    padding: 8,
-    marginLeft: 8,
+  typeBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  typeBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   divider: {
     height: 1,
@@ -199,57 +267,84 @@ const createStyles = () => StyleSheet.create({
     marginVertical: 16,
   },
   detailsContainer: {
-    marginTop: 8,
-    gap: 16,
+    gap: 20,
   },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    marginBottom: 12,
-  },
-  label: {
-    width: 100,
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
-    marginRight: 8,
-    fontWeight: '500',
-  },
-  value: {
-    flex: 1,
-    fontSize: 14,
-    color: '#FFFFFF',
-    textAlign: 'right',
-  },
-  metadataSection: {
-    marginTop: 8,
+  infoCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
     gap: 12,
   },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  metadataSection: {
+    gap: 12,
+  },
+  fieldCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  fieldHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  fieldValue: {
+    fontSize: 15,
+    fontWeight: '400',
+  },
   link: {
-    color: '#8B5CF6',
     textDecorationLine: 'underline',
   },
+  noteCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    minHeight: 100,
+  },
   noteText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 24,
+  },
+  tagsSection: {
+    gap: 12,
   },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 8,
-    gap: 6,
+    gap: 8,
   },
   tag: {
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginRight: 6,
-    marginBottom: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   tagText: {
     fontSize: 12,
-    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });

@@ -97,8 +97,6 @@ export async function createInheritancePlan(
       user_id: userId,
       plan_name: formData.plan_name,
       plan_type: formData.plan_type,
-      activation_method: formData.activation_method,
-      scheduled_date: formData.scheduled_date,
       instructions_encrypted,
       is_active: formData.is_active,
     })
@@ -288,12 +286,7 @@ export async function getInheritancePlanStatistics(userId: string): Promise<Inhe
       view_only: plans.filter(p => p.plan_type === 'view_only').length,
       destroy: plans.filter(p => p.plan_type === 'destroy').length,
     },
-    plans_by_activation: {
-      inactivity: plans.filter(p => p.activation_method === 'inactivity').length,
-      death_certificate: plans.filter(p => p.activation_method === 'death_certificate').length,
-      manual_trigger: plans.filter(p => p.activation_method === 'manual_trigger').length,
-      scheduled: plans.filter(p => p.activation_method === 'scheduled').length,
-    },
+    // Note: Activation method is now global per user, not per plan
   };
 
   return stats;

@@ -12,6 +12,8 @@ import { OnboardingProvider, useOnboarding } from '../contexts/OnboardingContext
 import { HeirProvider } from '@/contexts/HeirContext';
 import { ROUTES } from '@/constants/routes';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { OfflineNotice } from '@/components/OfflineNotice';
 
 // Loading component shown during auth state check
 function LoadingScreen() {
@@ -83,36 +85,39 @@ function RootLayoutNav() {
   }
 
   return (
-    <Stack screenOptions={{
-      headerShown: false,
-      animation: 'fade',
-    }}>
-      {/* Public routes */}
-      <Stack.Screen 
-        name="(auth)/sign-in" 
-        options={{ title: 'Sign In' }} 
-      />
-      <Stack.Screen 
-        name="(auth)/sign-up" 
-        options={{ title: 'Create Account' }} 
-      />
-      <Stack.Screen 
-        name="(auth)/recovery" 
-        options={{ title: 'Password Recovery' }} 
-      />
-      
-      {/* Onboarding route */}
-      <Stack.Screen 
-        name="onboarding" 
-        options={{ title: 'Welcome' }} 
-      />
-      
-      {/* Protected routes */}
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      
-      {/* Catch-all route */}
-      <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
-    </Stack>
+    <>
+      <OfflineNotice />
+      <Stack screenOptions={{
+        headerShown: false,
+        animation: 'fade',
+      }}>
+        {/* Public routes */}
+        <Stack.Screen 
+          name="(auth)/sign-in" 
+          options={{ title: 'Sign In' }} 
+        />
+        <Stack.Screen 
+          name="(auth)/sign-up" 
+          options={{ title: 'Create Account' }} 
+        />
+        <Stack.Screen 
+          name="(auth)/recovery" 
+          options={{ title: 'Password Recovery' }} 
+        />
+        
+        {/* Onboarding route */}
+        <Stack.Screen 
+          name="onboarding" 
+          options={{ title: 'Welcome' }} 
+        />
+        
+        {/* Protected routes */}
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        
+        {/* Catch-all route */}
+        <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
+      </Stack>
+    </>
   );
 }
 
@@ -132,19 +137,21 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider>
-      <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AuthProvider>
-          <OnboardingProvider>
-            <HeirProvider>
-              <VaultProvider>
-                <RootLayoutNav />
-                <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-              </VaultProvider>
-            </HeirProvider>
-          </OnboardingProvider>
-        </AuthProvider>
-      </NavThemeProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <AuthProvider>
+            <OnboardingProvider>
+              <HeirProvider>
+                <VaultProvider>
+                  <RootLayoutNav />
+                  <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+                </VaultProvider>
+              </HeirProvider>
+            </OnboardingProvider>
+          </AuthProvider>
+        </NavThemeProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

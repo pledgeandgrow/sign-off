@@ -32,6 +32,11 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+.env.production
+
+# Square credentials (NEVER COMMIT)
+square-credentials.txt
 
 # typescript
 *.tsbuildinfo

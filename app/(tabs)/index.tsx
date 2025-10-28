@@ -1,10 +1,19 @@
 import { Colors } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
+import { useHeirs } from '@/contexts/HeirContext';
+import { useVault } from '@/contexts/VaultContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { Activity, formatActivityTime, getActivityIcon, getRecentActivities } from '@/lib/services/activityService';
+import { getInheritancePlans } from '@/lib/services/inheritanceService';
+import { getUserSubscription } from '@/lib/services/subscriptionService';
+import { SQUARE_CONFIG } from '@/lib/constants';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Dimensions,
+  Linking,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -14,11 +23,6 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView as SafeAreaViewRN } from 'react-native-safe-area-context';
-import { useAuth } from '@/contexts/AuthContext';
-import { useVault } from '@/contexts/VaultContext';
-import { useHeirs } from '@/contexts/HeirContext';
-import { getInheritancePlans } from '@/lib/services/inheritanceService';
-import { getRecentActivities, getActivityIcon, formatActivityTime, Activity } from '@/lib/services/activityService';
 
 const { width } = Dimensions.get('window');
 
@@ -53,6 +57,8 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [inheritancePlansCount, setInheritancePlansCount] = useState(0);
   const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
+  const [isPremium, setIsPremium] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('free');
   const colorScheme = useColorScheme();
   const router = useRouter();
   const colors = Colors[colorScheme ?? 'dark'];
@@ -75,7 +81,45 @@ export default function HomeScreen() {
     await Promise.all([
       loadInheritancePlans(),
       loadActivities(),
+      loadSubscriptionStatus(),
     ]);
+  };
+
+  const loadSubscriptionStatus = async () => {
+    if (!user) return;
+    try {
+      const subscription = await getUserSubscription(user.id);
+      if (subscription) {
+        setIsPremium(
+          subscription.subscription_tier === 'premium' && 
+          subscription.subscription_status === 'active'
+        );
+        setSubscriptionStatus(subscription.subscription_tier);
+      }
+    } catch (error) {
+      console.error('Error loading subscription:', error);
+    }
+  };
+
+  const handleUpgrade = async () => {
+    if (!user) {
+      Alert.alert('Erreur', 'Veuillez vous connecter d\'abord');
+      return;
+    }
+
+    try {
+      const paymentUrl = `${SQUARE_CONFIG.PAYMENT_LINK}?user_id=${user.id}`;
+      const canOpen = await Linking.canOpenURL(paymentUrl);
+      
+      if (canOpen) {
+        await Linking.openURL(paymentUrl);
+      } else {
+        Alert.alert('Erreur', 'Impossible d\'ouvrir le lien de paiement');
+      }
+    } catch (error) {
+      console.error('Error opening payment link:', error);
+      Alert.alert('Erreur', 'Échec de l\'ouverture de la page de paiement');
+    }
   };
 
   const loadInheritancePlans = async () => {
@@ -190,6 +234,125 @@ export default function HomeScreen() {
           {QUICK_ACTIONS.map((action) => (
             <QuickActionCard key={action.id} item={action} />
           ))}
+        </View>
+
+        {/* Pricing Plans */}
+        <View style={styles.pricingSection}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={width - 60}
+            decelerationRate="fast"
+            contentContainerStyle={styles.plansSlider}
+          >
+            {/* Free Plan */}
+            <View style={[styles.planCard, { backgroundColor: 'rgba(139, 92, 246, 0.1)', borderColor: 'rgba(139, 92, 246, 0.2)', width: width - 60 }]}>
+              <View style={styles.planHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.planName, { color: colors.text }]}>Classic</Text>
+                  <Text style={[styles.planDescription, { color: colors.textSecondary }]}>
+                    Gestion essentielle de l'héritage numérique
+                  </Text>
+                </View>
+                <View style={styles.planBadge}>
+                  <Text style={styles.planBadgeText}>GRATUIT</Text>
+                </View>
+              </View>
+
+              <View style={styles.planFeatures}>
+                <View style={styles.featureItem}>
+                  <MaterialCommunityIcons name="check-circle" size={20} color={colors.purple.primary} />
+                  <Text style={[styles.featureText, { color: colors.text }]}>3 coffres-forts gratuits</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <MaterialCommunityIcons name="check-circle" size={20} color={colors.purple.primary} />
+                  <Text style={[styles.featureText, { color: colors.text }]}>3 héritiers gratuits</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <MaterialCommunityIcons name="check-circle" size={20} color={colors.purple.primary} />
+                  <Text style={[styles.featureText, { color: colors.text }]}>Stockage jusqu'à 1 Go</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <MaterialCommunityIcons name="check-circle" size={20} color={colors.purple.primary} />
+                  <Text style={[styles.featureText, { color: colors.text }]}>Sécurité de base</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <MaterialCommunityIcons name="check-circle" size={20} color={colors.purple.primary} />
+                  <Text style={[styles.featureText, { color: colors.text }]}>Support par email</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.planButton, { backgroundColor: 'transparent', borderColor: colors.purple.primary, borderWidth: 2 }]}
+                activeOpacity={0.8}
+                disabled={!isPremium}
+              >
+                <Text style={[styles.planButtonText, { color: colors.purple.primary }]}>
+                  {!isPremium ? 'Plan actuel' : 'Plan Classic'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Premium Plan */}
+            <View style={[styles.planCard, { backgroundColor: 'rgba(139, 92, 246, 0.15)', borderColor: colors.purple.primary, borderWidth: 2, width: width - 60 }]}>
+              <View style={styles.planHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.planName, { color: colors.text }]}>Legacy</Text>
+                  <Text style={[styles.planDescription, { color: colors.textSecondary }]}>
+                    Solution complète pour les familles
+                  </Text>
+                </View>
+                <View style={[styles.planBadge, { backgroundColor: colors.purple.primary }]}>
+                  <Text style={styles.planBadgeText}>PREMIUM</Text>
+                </View>
+              </View>
+
+              <View style={styles.planPricing}>
+                <Text style={[styles.planPrice, { color: colors.text }]}>10€</Text>
+                <Text style={[styles.planPeriod, { color: colors.textSecondary }]}>/mois</Text>
+              </View>
+
+              <View style={styles.planFeatures}>
+                <View style={styles.featureItem}>
+                  <MaterialCommunityIcons name="check-circle" size={20} color={colors.purple.primary} />
+                  <Text style={[styles.featureText, { color: colors.text }]}>Coffres-forts illimités</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <MaterialCommunityIcons name="check-circle" size={20} color={colors.purple.primary} />
+                  <Text style={[styles.featureText, { color: colors.text }]}>Héritiers illimités</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <MaterialCommunityIcons name="check-circle" size={20} color={colors.purple.primary} />
+                  <Text style={[styles.featureText, { color: colors.text }]}>Stockage jusqu'à 10 Go</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <MaterialCommunityIcons name="check-circle" size={20} color={colors.purple.primary} />
+                  <Text style={[styles.featureText, { color: colors.text }]}>Sécurité avancée</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <MaterialCommunityIcons name="check-circle" size={20} color={colors.purple.primary} />
+                  <Text style={[styles.featureText, { color: colors.text }]}>Support prioritaire</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <MaterialCommunityIcons name="check-circle" size={20} color={colors.purple.primary} />
+                  <Text style={[styles.featureText, { color: colors.text }]}>Essai gratuit 14 jours</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.planButton, { backgroundColor: isPremium ? 'transparent' : colors.purple.primary, borderColor: colors.purple.primary, borderWidth: isPremium ? 2 : 0 }]}
+                activeOpacity={0.8}
+                onPress={isPremium ? undefined : handleUpgrade}
+                disabled={isPremium}
+              >
+                <Text style={[styles.planButtonText, { color: isPremium ? colors.purple.primary : '#FFFFFF' }]}>
+                  {isPremium ? 'Plan actuel' : 'Passer au Premium'}
+                </Text>
+                {!isPremium && <MaterialCommunityIcons name="crown" size={20} color="#FFFFFF" />}
+                {isPremium && <MaterialCommunityIcons name="check-circle" size={20} color={colors.purple.primary} />}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
 
         {/* Recent Activity */}
@@ -374,5 +537,95 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 12,
     flex: 1,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  pricingSection: {
+    paddingTop: 0,
+    marginBottom: 20,
+  },
+  pricingSectionHeader: {
+    paddingHorizontal: 20,
+  },
+  plansSlider: {
+    paddingHorizontal: 20,
+    gap: 16,
+  },
+  planCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+  },
+  planHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  planName: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  planDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  planBadge: {
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  planBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  planPricing: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 20,
+  },
+  planPrice: {
+    fontSize: 36,
+    fontWeight: '700',
+  },
+  planPeriod: {
+    fontSize: 16,
+    marginLeft: 4,
+  },
+  planFeatures: {
+    marginBottom: 20,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 12,
+  },
+  featureText: {
+    fontSize: 15,
+    flex: 1,
+    lineHeight: 22,
+  },
+  planButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  planButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

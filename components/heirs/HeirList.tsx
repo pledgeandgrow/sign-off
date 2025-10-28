@@ -146,12 +146,14 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 24,
+    paddingTop: 8,
   },
   emptyListContent: {
     flexGrow: 1,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: 20,
+    paddingHorizontal: 4,
   },
   statsContainer: {
     flexDirection: 'row',

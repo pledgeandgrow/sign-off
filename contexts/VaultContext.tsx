@@ -499,32 +499,100 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const deleteVault = async (vaultId: string) => {
-    if (!user) throw new Error('User not authenticated');
+    if (!user) {
+      console.error('User not authenticated');
+      throw new Error('User not authenticated');
+    }
     
     try {
       setIsLoading(true);
       
-      console.log('Deleting vault:', vaultId);
+      console.log('🗑️ Starting vault deletion:', vaultId);
+      console.log('User ID:', user.id);
 
-      const { error } = await supabase
+      // Step 1: Delete heir_vault_access records (foreign key constraint)
+      console.log('Step 1: Deleting heir_vault_access records...');
+      const { data: accessData, error: heirAccessError } = await supabase
+        .from('heir_vault_access')
+        .delete()
+        .eq('vault_id', vaultId)
+        .select();
+
+      console.log('Deleted heir_vault_access records:', accessData?.length || 0);
+      if (heirAccessError) {
+        console.error('❌ Error deleting heir_vault_access:', heirAccessError);
+        throw new Error(`Failed to delete vault access records: ${heirAccessError.message}`);
+      }
+
+      // Step 2: Delete shared_vaults records (foreign key constraint)
+      console.log('Step 2: Deleting shared_vaults records...');
+      const { data: sharedData, error: sharedError } = await supabase
+        .from('shared_vaults')
+        .delete()
+        .eq('vault_id', vaultId)
+        .select();
+
+      console.log('Deleted shared_vaults records:', sharedData?.length || 0);
+      if (sharedError) {
+        console.error('❌ Error deleting shared_vaults:', sharedError);
+        throw new Error(`Failed to delete shared vault records: ${sharedError.message}`);
+      }
+
+      // Step 3: Delete all vault items
+      console.log('Step 3: Deleting vault items...');
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('vault_items')
+        .delete()
+        .eq('vault_id', vaultId)
+        .eq('user_id', user.id)
+        .select();
+
+      console.log('Deleted vault items:', itemsData?.length || 0);
+      if (itemsError) {
+        console.error('❌ Error deleting vault items:', itemsError);
+        throw new Error(`Failed to delete vault items: ${itemsError.message}`);
+      }
+
+      // Step 4: Delete the vault itself
+      console.log('Step 4: Deleting vault...');
+      const { data: vaultData, error: vaultError } = await supabase
         .from('vaults')
         .delete()
         .eq('id', vaultId)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select();
 
-      if (error) {
-        console.error('Supabase error deleting vault:', error);
-        throw error;
+      console.log('Deleted vault:', vaultData);
+      if (vaultError) {
+        console.error('❌ Supabase error deleting vault:', vaultError);
+        throw new Error(`Failed to delete vault: ${vaultError.message}`);
       }
 
-      console.log('Vault deleted successfully');
+      if (!vaultData || vaultData.length === 0) {
+        console.error('❌ No vault was deleted - vault not found or permission denied');
+        throw new Error('Vault not found or you do not have permission to delete it');
+      }
 
-      setVaults((prev) => prev.filter(v => v.id !== vaultId));
+      console.log('✅ Vault deleted successfully from database');
+
+      // Update local state
+      console.log('Updating local state...');
+      setVaults((prev) => {
+        const filtered = prev.filter(v => v.id !== vaultId);
+        console.log('Vaults before:', prev.length, 'after:', filtered.length);
+        return filtered;
+      });
+      
       if (currentVault?.id === vaultId) {
+        console.log('Clearing current vault');
         setCurrentVault(null);
       }
-    } catch (err) {
-      console.error('Failed to delete vault:', err);
+
+      console.log('✅ Vault deletion complete!');
+    } catch (err: any) {
+      console.error('❌ Failed to delete vault:', err);
+      console.error('Error message:', err.message);
+      console.error('Error details:', err);
       throw err;
     } finally {
       setIsLoading(false);

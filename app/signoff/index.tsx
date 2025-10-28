@@ -95,22 +95,17 @@ export default function SignOffScreen() {
       // Load saved global trigger settings
       const globalTrigger = await getGlobalTrigger(user.id);
       if (globalTrigger) {
-        setSelectedMethod(globalTrigger.method);
+        setSelectedMethod(globalTrigger.global_trigger_method);
         
         // Load method-specific settings
-        if (globalTrigger.settings) {
-          if (globalTrigger.settings.days) {
-            setInactivityDays(globalTrigger.settings.days.toString());
-          }
-          if (globalTrigger.settings.contactEmail) {
-            setTrustedContactEmail(globalTrigger.settings.contactEmail);
-          }
-          if (globalTrigger.settings.contactName) {
-            setTrustedContactName(globalTrigger.settings.contactName);
-          }
-          if (globalTrigger.settings.date) {
-            setScheduledDate(new Date(globalTrigger.settings.date));
-          }
+        if (globalTrigger.global_trigger_settings?.inactivity_days) {
+          setInactivityDays(globalTrigger.global_trigger_settings.inactivity_days.toString());
+        }
+        if (globalTrigger.trusted_contact_email) {
+          setTrustedContactEmail(globalTrigger.trusted_contact_email);
+        }
+        if (globalTrigger.global_scheduled_date) {
+          setScheduledDate(new Date(globalTrigger.global_scheduled_date));
         }
       }
       
@@ -143,19 +138,27 @@ export default function SignOffScreen() {
     }
 
     try {
-      // Prepare settings object
-      const settings: any = {};
+      // Prepare settings object based on selected method
+      const settingsToSave: any = {
+        global_trigger_method: selectedMethod as GlobalTriggerMethod,
+      };
+
       if (selectedMethod === 'inactivity') {
-        settings.days = parseInt(inactivityDays);
+        settingsToSave.global_trigger_settings = {
+          inactivity_days: parseInt(inactivityDays),
+        };
       } else if (selectedMethod === 'trusted_contact') {
-        settings.contactEmail = trustedContactEmail;
-        settings.contactName = trustedContactName;
-      } else if (selectedMethod === 'scheduled_date') {
-        settings.date = scheduledDate.toISOString();
+        settingsToSave.trusted_contact_email = trustedContactEmail;
+        settingsToSave.global_trigger_settings = {};
+      } else if (selectedMethod === 'scheduled_date' || selectedMethod === 'scheduled') {
+        settingsToSave.global_scheduled_date = scheduledDate.toISOString();
+        settingsToSave.global_trigger_settings = {};
+      } else {
+        settingsToSave.global_trigger_settings = {};
       }
 
       // Save global trigger method to Supabase
-      await saveGlobalTrigger(user.id, selectedMethod as GlobalTriggerMethod, settings);
+      await saveGlobalTrigger(user.id, settingsToSave);
 
       Alert.alert(
         'Déclencheur Global Enregistré',
