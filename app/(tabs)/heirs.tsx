@@ -233,7 +233,7 @@ export default function HeirsScreen() {
             visible: true,
             type: 'warning',
             title: 'Limite atteinte',
-            message: reason,
+            message: reason || 'Vous avez atteint la limite de votre plan.',
           });
           setShowInvitationForm(false);
           return;

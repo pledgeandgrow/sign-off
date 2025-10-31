@@ -1,3 +1,4 @@
+// @ts-nocheck - This is a Deno Edge Function, TypeScript errors are expected
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
