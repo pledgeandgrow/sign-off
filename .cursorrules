@@ -1,0 +1,299 @@
+# Règles pour l'IA Cursor - Sign-off
+
+## Contexte du Projet
+Lire obligatoirement `PROJECT_CONTEXT.md` pour comprendre l'application complète.
+
+## Informations Clés
+
+### Application
+- **Nom** : Sign-off
+- **Type** : Application mobile de gestion d'héritage numérique
+- **Stack** : React Native (Expo) + TypeScript + Supabase
+- **Objectif** : Permettre aux utilisateurs de préparer et transmettre leurs données importantes à leurs héritiers
+
+### Architecture
+- **Frontend** : React Native avec Expo Router (file-based routing)
+- **Backend** : Supabase (PostgreSQL + Auth + Storage + Edge Functions)
+- **État** : React Context API
+- **Sécurité** : RLS (Row Level Security) + Chiffrement AES-256
+
+### Concepts Principaux
+1. **Vaults (Coffres)** : Conteneurs sécurisés pour stocker des informations
+2. **Heirs (Héritiers)** : Personnes désignées pour recevoir les informations
+3. **Inheritance Plans** : Règles de transmission automatique
+4. **Subscriptions** : Free (limité) vs Premium (illimité)
+
+## Règles de Développement
+
+### Style de Code
+- **Langage** : TypeScript strict
+- **Composants** : Functional components avec hooks
+- **Naming** :
+  - Composants : PascalCase (ex: `VaultCard.tsx`)
+  - Fonctions : camelCase (ex: `createVault`)
+  - Constantes : UPPER_SNAKE_CASE (ex: `MAX_FILE_SIZE`)
+  - Types : PascalCase (ex: `VaultDecrypted`)
+
+### Structure des Fichiers
+- **Pages** : `app/` (Expo Router)
+- **Composants** : `components/[feature]/ComponentName.tsx`
+- **Contextes** : `contexts/FeatureContext.tsx`
+- **Services** : `lib/services/featureService.ts`
+- **Types** : `types/feature.ts`
+
+### Conventions TypeScript
+```typescript
+// ✅ BON
+interface VaultDecrypted {
+  id: string;
+  name: string;
+  items: VaultItem[];
+}
+
+export async function createVault(data: VaultFormData): Promise<Vault> {
+  // ...
+}
+
+// ❌ MAUVAIS
+interface vault_decrypted {
+  // ...
+}
+
+export async function CreateVault(data: any): Promise<any> {
+  // ...
+}
+```
+
+### Gestion d'État
+- Utiliser les **Context** existants (AuthContext, VaultContext, HeirContext, InheritanceContext)
+- Ne pas créer de nouveaux Context sans raison valable
+- Préférer les hooks personnalisés pour la logique réutilisable
+
+### Sécurité
+- **TOUJOURS** vérifier l'authentification (`user` dans Context)
+- **TOUJOURS** utiliser RLS pour les requêtes Supabase
+- **JAMAIS** stocker de données sensibles en clair
+- Chiffrer les données sensibles (héritiers, mots de passe)
+
+### Gestion des Erreurs
+```typescript
+// ✅ BON
+try {
+  const result = await createVault(data);
+  Alert.alert('Succès', 'Coffre créé avec succès');
+} catch (error) {
+  console.error('Error creating vault:', error);
+  Alert.alert('Erreur', 'Échec de la création du coffre');
+}
+
+// ❌ MAUVAIS
+const result = await createVault(data); // Pas de gestion d'erreur
+```
+
+### UI/UX
+- **Dark mode** par défaut
+- Utiliser `Colors[colorScheme]` pour les couleurs
+- Utiliser `MaterialCommunityIcons` pour les icônes
+- Toujours ajouter `accessibilityLabel` aux boutons
+- Utiliser `SafeAreaView` pour les écrans
+
+### Performance
+- Utiliser `React.memo` pour les composants lourds
+- Éviter les re-renders inutiles
+- Optimiser les images (compression, lazy loading)
+- Nettoyer les listeners dans `useEffect` cleanup
+
+### Base de Données
+- **Tables principales** : users, vaults, vault_items, heirs, inheritance_plans, subscriptions
+- **RLS activé** sur toutes les tables
+- Toujours filtrer par `user_id` : `.eq('user_id', user.id)`
+- Utiliser `.select()` pour récupérer les données après INSERT/UPDATE
+
+### Fichiers
+- **Storage** : Supabase Storage (bucket: `vault-files`)
+- **Path** : `userId/vaultId/filename`
+- **Cleanup** : Automatique via `cleanupOrphanedFiles`
+- **Limites** : 100 MB (free), 10 GB (premium)
+
+## Problèmes Connus & Solutions
+
+### 1. Suppression des héritiers ne fonctionne pas
+**Solution** : Exécuter le script SQL dans `FIX_HEIRS_DELETION.md`
+
+### 2. Installation expo-in-app-purchases échoue
+**Solution** : Utiliser le mock temporaire, voir `INSTALLATION_IAP.md`
+
+### 3. Erreur 406 sur /subscriptions
+**Solution** : Appliquer la migration `20250131_add_iap_fields.sql`
+
+## Commandes Fréquentes
+
+```bash
+# Développement
+npm start                    # Lancer Expo
+npm run web                 # Lancer sur Web
+
+# Supabase
+supabase db push            # Appliquer migrations
+supabase functions deploy   # Déployer functions
+
+# Debug
+npx expo start --clear      # Nettoyer cache
+```
+
+## Priorités de Développement
+
+1. **Sécurité** : Toujours en premier
+2. **UX** : Interface intuitive et fluide
+3. **Performance** : Optimisation constante
+4. **Accessibilité** : Support complet
+5. **Documentation** : Code bien commenté
+
+## Références Importantes
+
+- **Context complet** : `PROJECT_CONTEXT.md`
+- **Guide IAP** : `docs/IAP_MIGRATION_GUIDE.md`
+- **Dépannage** : `docs/TROUBLESHOOTING_HEIRS.md`
+- **Scalabilité** : `docs/SCALABILITY.md`
+
+## Langue
+
+- **Code** : Anglais (variables, fonctions, commentaires)
+- **UI** : Français (textes affichés à l'utilisateur)
+- **Documentation** : Français (pour l'équipe)
+
+## Exemples de Bonnes Pratiques
+
+### Composant
+```typescript
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
+
+interface VaultCardProps {
+  vault: VaultDecrypted;
+  onPress: () => void;
+  onDelete?: () => void;
+}
+
+export const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress, onDelete }) => {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'dark'];
+
+  return (
+    <TouchableOpacity 
+      style={[styles.card, { backgroundColor: colors.surface }]}
+      onPress={onPress}
+      accessibilityLabel={`Ouvrir le coffre ${vault.name}`}
+    >
+      <View style={styles.content}>
+        <MaterialCommunityIcons 
+          name={vault.icon as any} 
+          size={24} 
+          color={vault.color} 
+        />
+        <Text style={[styles.title, { color: colors.text }]}>
+          {vault.name}
+        </Text>
+      </View>
+      {onDelete && (
+        <TouchableOpacity 
+          onPress={onDelete}
+          accessibilityLabel={`Supprimer ${vault.name}`}
+        >
+          <MaterialCommunityIcons name="delete" size={20} color={colors.error} />
+        </TouchableOpacity>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  card: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
+```
+
+### Service
+```typescript
+import { supabase } from '@/lib/supabase';
+import type { Vault, VaultFormData } from '@/types/vault';
+
+export async function createVault(
+  userId: string, 
+  data: VaultFormData
+): Promise<Vault> {
+  try {
+    const { data: vault, error } = await supabase
+      .from('vaults')
+      .insert({
+        user_id: userId,
+        name: data.name,
+        description: data.description,
+        icon: data.icon,
+        color: data.color,
+        is_encrypted: data.is_encrypted,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return vault;
+  } catch (error) {
+    console.error('Error creating vault:', error);
+    throw error;
+  }
+}
+
+export async function deleteVault(
+  userId: string, 
+  vaultId: string
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('vaults')
+      .delete()
+      .eq('id', vaultId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting vault:', error);
+    throw error;
+  }
+}
+```
+
+## Notes Importantes
+
+- **RLS** : TOUJOURS filtrer par `user_id` pour la sécurité
+- **Types** : Utiliser les types définis dans `types/`
+- **Contexte** : Utiliser les Context existants, ne pas dupliquer la logique
+- **Erreurs** : Toujours logger ET afficher à l'utilisateur
+- **Cleanup** : Toujours nettoyer les listeners/subscriptions dans useEffect
+
+## En Cas de Doute
+
+1. Consulter `PROJECT_CONTEXT.md`
+2. Regarder les composants existants similaires
+3. Vérifier les types dans `types/`
+4. Tester avec les Context existants
+5. Vérifier la documentation Supabase/Expo
+
+---
+
+**Objectif** : Code propre, sécurisé, performant et maintenable.

@@ -20,7 +20,7 @@ export async function getRecentActivities(
   limit: number = 10
 ): Promise<Activity[]> {
   const { data, error } = await supabase
-    .from('user_activities')
+    .from('user_activity')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
@@ -46,7 +46,7 @@ export async function logActivity(
 ): Promise<void> {
   try {
     const { error } = await supabase
-      .from('user_activities')
+      .from('user_activity')
       .insert({
         user_id: userId,
         activity_type: activityType,

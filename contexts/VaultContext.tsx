@@ -1,4 +1,4 @@
-import { Vault, VaultCategory, VaultItem } from '@/types/vault';
+import { Vault, VaultCategory, VaultItem, VaultEncryptionType } from '@/types/vault';
 import React, { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
@@ -88,7 +88,7 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             type: item.item_type,
             createdAt: item.created_at,
             updatedAt: item.updated_at,
-            metadata: {},
+            metadata: item.metadata || {},
             isEncrypted: false,
             tags: item.tags || [],
           }));
@@ -225,6 +225,7 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         storage_bucket: 'vault-items',
         file_size: null,
         title_encrypted: item.title, // TODO: Encrypt later
+        metadata: item.metadata || {},
         tags: item.tags || [],
         is_favorite: false,
         password_strength: null,
@@ -253,7 +254,7 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         type: data.item_type,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
-        metadata: {},
+        metadata: data.metadata || {},
         isEncrypted: false,
         tags: data.tags,
       };
@@ -286,6 +287,7 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       
       if (updates.title) dbUpdates.title_encrypted = updates.title;
       if (updates.type) dbUpdates.item_type = updates.type;
+      if (updates.metadata !== undefined) dbUpdates.metadata = updates.metadata;
       if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
 
       console.log('Updating vault item:', itemId, dbUpdates);
@@ -340,6 +342,52 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       
       console.log('Deleting vault item:', itemId);
 
+      // Step 1: Get item data to check for file
+      const { data: itemData, error: fetchError } = await supabase
+        .from('vault_items')
+        .select('*')
+        .eq('id', itemId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching item:', fetchError);
+        throw fetchError;
+      }
+
+      // Step 2: Delete file from storage if it exists
+      if (itemData && itemData.metadata && itemData.metadata.fileUrl) {
+        try {
+          console.log('Item has file, deleting from storage...');
+          
+          // Extract file path from URL
+          const urlParts = itemData.metadata.fileUrl.split('/');
+          const pathIndex = urlParts.findIndex((part: string) => part === 'vault-files');
+          
+          if (pathIndex !== -1 && pathIndex < urlParts.length - 1) {
+            const pathParts = urlParts.slice(pathIndex + 1);
+            const fullPath = pathParts.join('/').split('?')[0]; // Remove query params
+            
+            console.log(`Deleting file: ${fullPath}`);
+            
+            const { error: deleteFileError } = await supabase.storage
+              .from('vault-files')
+              .remove([fullPath]);
+            
+            if (deleteFileError) {
+              console.error(`⚠️ Error deleting file ${fullPath}:`, deleteFileError);
+              // Don't throw, continue with item deletion
+            } else {
+              console.log(`✅ File deleted: ${fullPath}`);
+            }
+          }
+        } catch (fileError) {
+          console.error('⚠️ Error processing file deletion:', fileError);
+          // Don't throw, continue with item deletion
+        }
+      }
+
+      // Step 3: Delete item from database
       const { error } = await supabase
         .from('vault_items')
         .delete()
@@ -453,6 +501,7 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (updates.accessControl) dbUpdates.access_control = updates.accessControl;
       if (updates.deathSettings) dbUpdates.death_settings = updates.deathSettings;
       if (updates.isEncrypted !== undefined) dbUpdates.is_encrypted = updates.isEncrypted;
+      if (updates.encryptionType !== undefined) dbUpdates.encryption_type = updates.encryptionType;
       if (updates.isLocked !== undefined) dbUpdates.is_locked = updates.isLocked;
       if (updates.is_shared !== undefined) dbUpdates.is_shared = updates.is_shared;
       if (updates.is_favorite !== undefined) dbUpdates.is_favorite = updates.is_favorite;
@@ -538,8 +587,59 @@ export const VaultProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         throw new Error(`Failed to delete shared vault records: ${sharedError.message}`);
       }
 
-      // Step 3: Delete all vault items
-      console.log('Step 3: Deleting vault items...');
+      // Step 3: Get all vault items to delete their files from storage
+      console.log('Step 3: Getting vault items to delete files...');
+      const { data: itemsToDelete, error: fetchItemsError } = await supabase
+        .from('vault_items')
+        .select('*')
+        .eq('vault_id', vaultId)
+        .eq('user_id', user.id);
+
+      if (fetchItemsError) {
+        console.error('❌ Error fetching vault items:', fetchItemsError);
+        throw new Error(`Failed to fetch vault items: ${fetchItemsError.message}`);
+      }
+
+      // Step 3a: Delete files from storage bucket
+      if (itemsToDelete && itemsToDelete.length > 0) {
+        console.log(`Step 3a: Deleting ${itemsToDelete.length} files from storage...`);
+        
+        for (const item of itemsToDelete) {
+          // Check if item has a fileUrl in metadata
+          if (item.metadata && item.metadata.fileUrl) {
+            try {
+              // Extract file path from URL
+              const urlParts = item.metadata.fileUrl.split('/');
+              const pathIndex = urlParts.findIndex(part => part === 'vault-files');
+              
+              if (pathIndex !== -1 && pathIndex < urlParts.length - 1) {
+                // Get everything after 'vault-files/' and before query params
+                const pathParts = urlParts.slice(pathIndex + 1);
+                const fullPath = pathParts.join('/').split('?')[0]; // Remove query params
+                
+                console.log(`Deleting file: ${fullPath}`);
+                
+                const { error: deleteFileError } = await supabase.storage
+                  .from('vault-files')
+                  .remove([fullPath]);
+                
+                if (deleteFileError) {
+                  console.error(`⚠️ Error deleting file ${fullPath}:`, deleteFileError);
+                  // Don't throw, continue with other deletions
+                } else {
+                  console.log(`✅ File deleted: ${fullPath}`);
+                }
+              }
+            } catch (fileError) {
+              console.error('⚠️ Error processing file deletion:', fileError);
+              // Don't throw, continue with other deletions
+            }
+          }
+        }
+      }
+
+      // Step 3b: Delete all vault items from database
+      console.log('Step 3b: Deleting vault items from database...');
       const { data: itemsData, error: itemsError } = await supabase
         .from('vault_items')
         .delete()

@@ -12,8 +12,15 @@ export interface UserSubscription {
 export interface SubscriptionRecord {
   id: string;
   user_id: string;
+  // Square fields (legacy)
   square_subscription_id?: string;
   square_customer_id?: string;
+  // In-App Purchase fields
+  store_transaction_id?: string;
+  store_product_id?: string;
+  store_platform?: 'ios' | 'android' | 'web';
+  receipt_data?: string;
+  // Common fields
   plan_name: string;
   amount: number;
   currency: string;

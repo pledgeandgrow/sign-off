@@ -1,18 +1,18 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
-} from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { HeirDecrypted } from '@/types/heir';
-import { HeirCard } from './HeirCard';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { HeirDecrypted } from '@/types/heir';
+import { MaterialIcons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { HeirCard } from './HeirCard';
 
 interface HeirListProps {
   heirs: HeirDecrypted[];
@@ -21,6 +21,7 @@ interface HeirListProps {
   onHeirPress?: (heir: HeirDecrypted) => void;
   onEditHeir?: (heir: HeirDecrypted) => void;
   onDeleteHeir?: (heir: HeirDecrypted) => void;
+  onCancelInvitation?: (heir: HeirDecrypted) => void;
   onAddHeir?: () => void;
   emptyMessage?: string;
   showActions?: boolean;
@@ -33,6 +34,7 @@ export const HeirList: React.FC<HeirListProps> = ({
   onHeirPress,
   onEditHeir,
   onDeleteHeir,
+  onCancelInvitation,
   onAddHeir,
   emptyMessage = 'Aucun héritier',
   showActions = true,
@@ -71,7 +73,7 @@ export const HeirList: React.FC<HeirListProps> = ({
         {onAddHeir && (
           <TouchableOpacity style={[styles.addFirstButton, { backgroundColor: colors.purple.primary }]} onPress={onAddHeir}>
             <MaterialIcons name="add" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-            <Text style={styles.addFirstButtonText}>Ajouter un héritier</Text>
+            <Text style={styles.addFirstButtonText}>Inviter un héritier</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -113,6 +115,7 @@ export const HeirList: React.FC<HeirListProps> = ({
       onPress={() => onHeirPress?.(item)}
       onEdit={() => onEditHeir?.(item)}
       onDelete={() => onDeleteHeir?.(item)}
+      onCancelInvitation={() => onCancelInvitation?.(item)}
       showActions={showActions}
     />
   );

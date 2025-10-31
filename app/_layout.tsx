@@ -4,7 +4,6 @@ import { Stack, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { View, ActivityIndicator, useColorScheme } from 'react-native';
-import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { VaultProvider } from '../contexts/VaultContext';

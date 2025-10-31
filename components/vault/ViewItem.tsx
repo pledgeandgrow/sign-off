@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Alert, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { VaultItem, VaultItemType } from '@/types/vault';
 import { Colors } from '@/constants/Colors';
@@ -94,26 +94,195 @@ export const ViewItem: React.FC<{
           </View>
         );
         
+      case 'crypto':
+        return (
+          <View style={styles.metadataSection}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Détails Crypto</Text>
+            <View style={[styles.fieldCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Adresse du portefeuille</Text>
+              <Text style={[styles.fieldValue, { color: colors.text }]} numberOfLines={1}>
+                {(metadata as any).walletAddress || 'Non défini'}
+              </Text>
+            </View>
+            
+            <View style={[styles.fieldCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+              <View style={styles.fieldHeader}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Clé privée</Text>
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <MaterialCommunityIcons 
+                    name={showPassword ? 'eye-off' : 'eye'} 
+                    size={20} 
+                    color={colors.purple.primary} 
+                  />
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.fieldValue, { color: '#FFFFFF' }]}>
+                {showPassword ? ((metadata as any).privateKey || 'Aucune clé') : '••••••••••••'}
+              </Text>
+            </View>
+            
+            {(metadata as any).network && (
+              <View style={[styles.fieldCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Réseau</Text>
+                <Text style={[styles.fieldValue, { color: colors.text }]}>
+                  {(metadata as any).network}
+                </Text>
+              </View>
+            )}
+          </View>
+        );
+        
+      case 'bank':
+        return (
+          <View style={styles.metadataSection}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Informations bancaires</Text>
+            <View style={[styles.fieldCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Numéro de compte</Text>
+              <Text style={[styles.fieldValue, { color: colors.text }]}>
+                {(metadata as any).accountNumber || 'Non défini'}
+              </Text>
+            </View>
+            
+            {(metadata as any).routingNumber && (
+              <View style={[styles.fieldCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Code banque / IBAN</Text>
+                <Text style={[styles.fieldValue, { color: colors.text }]}>
+                  {(metadata as any).routingNumber}
+                </Text>
+              </View>
+            )}
+            
+            {(metadata as any).accountType && (
+              <View style={[styles.fieldCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Type de compte</Text>
+                <Text style={[styles.fieldValue, { color: colors.text }]}>
+                  {(metadata as any).accountType}
+                </Text>
+              </View>
+            )}
+          </View>
+        );
+        
       case 'document':
       case 'image':
       case 'video':
         return (
           <View style={styles.metadataSection}>
-            <Text style={styles.label}>File Name:</Text>
-            <Text style={styles.value}>{(metadata as any).fileName || 'No file name'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Informations du fichier</Text>
             
-            {(metadata as any).fileSize && (
-              <>
-                <Text style={styles.label}>File Size:</Text>
-                <Text style={styles.value}>{(metadata as any).fileSize} bytes</Text>
-              </>
+            {/* File Preview */}
+            {(metadata as any).fileUrl && (
+              <View style={[styles.previewCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                {type === 'image' && (
+                  <img 
+                    src={(metadata as any).fileUrl} 
+                    alt={(metadata as any).fileName}
+                    style={{
+                      width: '100%',
+                      maxHeight: '300px',
+                      objectFit: 'contain',
+                      borderRadius: '8px'
+                    }}
+                  />
+                )}
+                
+                {type === 'video' && (
+                  <video 
+                    src={(metadata as any).fileUrl}
+                    controls
+                    style={{
+                      width: '100%',
+                      maxHeight: '300px',
+                      borderRadius: '8px'
+                    }}
+                  />
+                )}
+                
+                {type === 'document' && (
+                  <View style={styles.documentPreview}>
+                    <MaterialCommunityIcons name="file-document" size={64} color={colors.purple.primary} />
+                    <Text style={[styles.documentPreviewText, { color: colors.textSecondary }]}>
+                      Aperçu non disponible pour ce type de fichier
+                    </Text>
+                  </View>
+                )}
+                
+                {/* Download Button */}
+                <TouchableOpacity
+                  style={[styles.downloadButton, { backgroundColor: colors.purple.primary }]}
+                  onPress={() => {
+                    const link = document.createElement('a');
+                    link.href = (metadata as any).fileUrl;
+                    link.download = (metadata as any).fileName || 'download';
+                    link.target = '_blank';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons name="download" size={20} color="#FFFFFF" />
+                  <Text style={styles.downloadButtonText}>Télécharger</Text>
+                </TouchableOpacity>
+              </View>
             )}
             
-            {(metadata as any).fileType && (
-              <>
-                <Text style={styles.label}>File Type:</Text>
-                <Text style={styles.value}>{(metadata as any).fileType}</Text>
-              </>
+            <View style={[styles.fieldCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Nom du fichier</Text>
+              <Text style={[styles.fieldValue, { color: colors.text }]}>
+                {(metadata as any).fileName || 'Non défini'}
+              </Text>
+            </View>
+            
+            {(metadata as any).fileSize && (
+              <View style={[styles.fieldCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Taille</Text>
+                <Text style={[styles.fieldValue, { color: colors.text }]}>
+                  {(metadata as any).fileSize}
+                </Text>
+              </View>
+            )}
+            
+            {(metadata as any).description && (
+              <View style={[styles.fieldCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Description</Text>
+                <Text style={[styles.fieldValue, { color: colors.text }]}>
+                  {(metadata as any).description}
+                </Text>
+              </View>
+            )}
+          </View>
+        );
+        
+      case 'other':
+        return (
+          <View style={styles.metadataSection}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Informations</Text>
+            {(metadata as any).field1 && (
+              <View style={[styles.fieldCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Champ 1</Text>
+                <Text style={[styles.fieldValue, { color: colors.text }]}>
+                  {(metadata as any).field1}
+                </Text>
+              </View>
+            )}
+            
+            {(metadata as any).field2 && (
+              <View style={[styles.fieldCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Champ 2</Text>
+                <Text style={[styles.fieldValue, { color: colors.text }]}>
+                  {(metadata as any).field2}
+                </Text>
+              </View>
+            )}
+            
+            {(metadata as any).notes && (
+              <View style={[styles.fieldCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Notes</Text>
+                <Text style={[styles.fieldValue, { color: colors.text }]}>
+                  {(metadata as any).notes}
+                </Text>
+              </View>
             )}
           </View>
         );
@@ -175,7 +344,12 @@ export const ViewItem: React.FC<{
       
       <View style={[styles.divider, { backgroundColor: 'rgba(255, 255, 255, 0.1)' }]} />
       
-      <View style={styles.detailsContainer}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+      >
+        <View style={styles.detailsContainer}>
         <View style={[styles.infoCard, { backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)' }]}>
           <View style={styles.infoRow}>
             <MaterialCommunityIcons name="calendar" size={16} color={colors.textSecondary} />
@@ -209,7 +383,8 @@ export const ViewItem: React.FC<{
         )}
         
         {renderMetadata()}
-      </View>
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -217,9 +392,18 @@ export const ViewItem: React.FC<{
 const createStyles = () => StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     padding: 20,
+    paddingBottom: 40,
   },
   header: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
@@ -346,5 +530,43 @@ const createStyles = () => StyleSheet.create({
   tagText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  previewCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+    gap: 12,
+  },
+  documentPreview: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    gap: 12,
+  },
+  documentPreviewText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  downloadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 14,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#8B5CF6',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  downloadButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

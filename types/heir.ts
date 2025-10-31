@@ -1,14 +1,16 @@
 import { AccessLevelType, InheritancePlanType, ActivationMethodType, TriggerReasonType, TriggerStatusType } from './database.types';
 
 // =====================================================
-// HEIR TYPES
+// HEIR TYPES - Invitation System
 // =====================================================
 
+// Re-export for convenience
+export type { AccessLevelType };
+
+export type InvitationStatus = 'pending' | 'accepted' | 'rejected' | 'expired';
+
 export interface HeirBase {
-  full_name_encrypted: string;
-  email_encrypted: string;
-  phone_encrypted: string | null;
-  relationship_encrypted: string | null;
+  relationship: string | null;
   access_level: AccessLevelType;
   notify_on_activation: boolean;
   notification_delay_days: number;
@@ -23,20 +25,31 @@ export interface Heir extends HeirBase {
   is_active: boolean;
   has_accepted: boolean;
   accepted_at: string | null;
+  invitation_code: string | null;
+  invitation_status: InvitationStatus;
+  invitation_expires_at: string | null;
+  invited_at: string | null;
+  rejected_at: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export type HeirFormData = Omit<Heir, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'has_accepted' | 'accepted_at'>;
+export type HeirFormData = Omit<Heir, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'has_accepted' | 'accepted_at' | 'invitation_code' | 'invitation_status' | 'invitation_expires_at' | 'invited_at' | 'rejected_at'>;
 
-// Decrypted heir data for display
+// Heir with user information (from view)
+export interface HeirWithUserInfo extends Heir {
+  heir_email: string | null;
+  heir_full_name: string | null;
+  heir_avatar_url: string | null;
+  owner_email: string;
+  owner_full_name: string | null;
+}
+
+// For display purposes
 export interface HeirDecrypted {
   id: string;
   user_id: string;
   inheritance_plan_id: string | null;
-  full_name: string;
-  email: string;
-  phone: string | null;
   relationship: string | null;
   access_level: AccessLevelType;
   heir_user_id: string | null;
@@ -46,8 +59,31 @@ export interface HeirDecrypted {
   is_active: boolean;
   has_accepted: boolean;
   accepted_at: string | null;
+  invitation_code: string | null;
+  invitation_status: InvitationStatus;
+  invitation_expires_at: string | null;
+  invited_at: string | null;
+  rejected_at: string | null;
   created_at: string;
   updated_at: string;
+  // User info (if accepted)
+  heir_email?: string | null;
+  heir_full_name?: string | null;
+  heir_avatar_url?: string | null;
+}
+
+// Invitation creation data
+export interface CreateHeirInvitationData {
+  relationship?: string;
+  access_level: AccessLevelType;
+  inheritance_plan_id?: string | null;
+  notify_on_activation?: boolean;
+  notification_delay_days?: number;
+}
+
+// Invitation acceptance data
+export interface AcceptHeirInvitationData {
+  invitation_code: string;
 }
 
 // =====================================================

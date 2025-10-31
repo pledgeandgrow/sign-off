@@ -29,7 +29,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     height: '100%',
-    width: 80,
     backgroundColor: 'transparent',
   },
   signOffButton: {
@@ -157,10 +156,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="heirs"
         options={{
-          title: 'Héritiers',
+          title: 'Héritages',
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons 
-              name="account-group" 
+              name="account-heart" 
               size={24} 
               color={color}
               style={{ opacity: focused ? 1 : 0.7 }}

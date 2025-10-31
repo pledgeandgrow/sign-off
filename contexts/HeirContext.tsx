@@ -1,15 +1,23 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
-import { Heir, HeirDecrypted, HeirFormData } from '@/types/heir';
-import { encryptData, decryptData } from '@/lib/encryption';
-import { AccessLevelType } from '@/types/database.types';
+import type { HeirDecrypted, CreateHeirInvitationData } from '../types/heir';
+import { 
+  createHeirInvitation,
+  acceptHeirInvitation,
+  rejectHeirInvitation,
+  getPendingInvitations,
+  cancelHeirInvitation,
+} from '@/lib/services/heirInvitationService';
 
 interface HeirContextType {
   heirs: HeirDecrypted[];
+  pendingInvitations: HeirDecrypted[];
   loading: boolean;
-  createHeir: (heirData: Omit<HeirFormData, 'heir_user_id' | 'heir_public_key' | 'is_active'>) => Promise<HeirDecrypted>;
-  updateHeir: (id: string, updates: Partial<HeirFormData>) => Promise<HeirDecrypted>;
+  createInvitation: (data: CreateHeirInvitationData) => Promise<{ heir: HeirDecrypted; invitationCode: string }>;
+  acceptInvitation: (invitationCode: string) => Promise<HeirDecrypted>;
+  rejectInvitation: (invitationCode: string) => Promise<void>;
+  cancelInvitation: (heirId: string) => Promise<void>;
   deleteHeir: (id: string) => Promise<void>;
   refreshHeirs: () => Promise<void>;
 }
@@ -19,6 +27,7 @@ const HeirContext = createContext<HeirContextType | undefined>(undefined);
 export function HeirProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [heirs, setHeirs] = useState<HeirDecrypted[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<HeirDecrypted[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Fetch heirs when user logs in
@@ -27,6 +36,7 @@ export function HeirProvider({ children }: { children: ReactNode }) {
       refreshHeirs();
     } else {
       setHeirs([]);
+      setPendingInvitations([]);
     }
   }, [user]);
 
@@ -35,23 +45,20 @@ export function HeirProvider({ children }: { children: ReactNode }) {
 
     setLoading(true);
     try {
+      // Récupérer les héritiers avec les informations utilisateur
       const { data, error } = await supabase
-        .from('heirs')
+        .from('heirs_with_user_info')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // TODO: Add decryption later - for now read data directly
-      const decryptedHeirs: HeirDecrypted[] = (data || []).map((heir: Heir) => ({
+      const decryptedHeirs: HeirDecrypted[] = (data || []).map((heir: any) => ({
         id: heir.id,
         user_id: heir.user_id,
         inheritance_plan_id: heir.inheritance_plan_id,
-        full_name: heir.full_name_encrypted,
-        email: heir.email_encrypted,
-        phone: heir.phone_encrypted,
-        relationship: heir.relationship_encrypted,
+        relationship: heir.relationship,
         access_level: heir.access_level,
         heir_user_id: heir.heir_user_id,
         heir_public_key: heir.heir_public_key,
@@ -60,11 +67,23 @@ export function HeirProvider({ children }: { children: ReactNode }) {
         is_active: heir.is_active,
         has_accepted: heir.has_accepted,
         accepted_at: heir.accepted_at,
+        invitation_code: heir.invitation_code,
+        invitation_status: heir.invitation_status,
+        invitation_expires_at: heir.invitation_expires_at,
+        invited_at: heir.invited_at,
+        rejected_at: heir.rejected_at,
         created_at: heir.created_at,
         updated_at: heir.updated_at,
+        heir_email: heir.heir_email,
+        heir_full_name: heir.heir_full_name,
+        heir_avatar_url: heir.heir_avatar_url,
       }));
 
       setHeirs(decryptedHeirs);
+
+      // Récupérer les invitations en attente pour cet utilisateur (où il est héritier)
+      const pendingInvs = await getPendingInvitations(user.id);
+      setPendingInvitations(pendingInvs);
     } catch (error) {
       console.error('Error fetching heirs:', error);
       throw error;
@@ -73,123 +92,67 @@ export function HeirProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const createHeir = async (
-    heirData: Omit<HeirFormData, 'heir_user_id' | 'heir_public_key' | 'is_active'>
-  ): Promise<HeirDecrypted> => {
+  const createInvitation = async (
+    data: CreateHeirInvitationData
+  ): Promise<{ heir: HeirDecrypted; invitationCode: string }> => {
     if (!user) throw new Error('User not authenticated');
 
     try {
-      // TODO: Add encryption later - for now save data directly
-      const dataToInsert = {
-        user_id: user.id,
-        full_name_encrypted: heirData.full_name_encrypted,
-        email_encrypted: heirData.email_encrypted,
-        phone_encrypted: heirData.phone_encrypted || null,
-        relationship_encrypted: heirData.relationship_encrypted || null,
-        access_level: heirData.access_level,
-        inheritance_plan_id: heirData.inheritance_plan_id || null,
-        notify_on_activation: heirData.notify_on_activation ?? true,
-        notification_delay_days: heirData.notification_delay_days ?? 0,
-        is_active: true,
-        heir_user_id: null,
-        heir_public_key: null,
-      };
-
-      console.log('Creating heir with data:', dataToInsert);
-
-      const { data, error } = await supabase
-        .from('heirs')
-        .insert(dataToInsert)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
-
-      console.log('Heir created successfully:', data);
-
-      const newHeir: HeirDecrypted = {
-        id: data.id,
-        user_id: data.user_id,
-        inheritance_plan_id: data.inheritance_plan_id,
-        full_name: data.full_name_encrypted,
-        email: data.email_encrypted,
-        phone: data.phone_encrypted,
-        relationship: data.relationship_encrypted,
-        access_level: data.access_level,
-        heir_user_id: data.heir_user_id,
-        heir_public_key: data.heir_public_key,
-        notify_on_activation: data.notify_on_activation,
-        notification_delay_days: data.notification_delay_days,
-        is_active: data.is_active,
-        has_accepted: data.has_accepted,
-        accepted_at: data.accepted_at,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-      };
-
-      setHeirs((prev) => [newHeir, ...prev]);
-      return newHeir;
+      const result = await createHeirInvitation(user.id, data);
+      
+      // Ajouter le nouvel héritier à la liste
+      setHeirs((prev) => [result.heir, ...prev]);
+      
+      return result;
     } catch (error) {
-      console.error('Error creating heir:', error);
+      console.error('Error creating invitation:', error);
       throw error;
     }
   };
 
-  const updateHeir = async (id: string, updates: Partial<HeirFormData>): Promise<HeirDecrypted> => {
+  const acceptInvitation = async (invitationCode: string): Promise<HeirDecrypted> => {
     if (!user) throw new Error('User not authenticated');
 
     try {
-      // TODO: Add encryption later - for now save data directly
-      const updateData: any = {
-        updated_at: new Date().toISOString(),
-      };
-
-      if (updates.full_name_encrypted) updateData.full_name_encrypted = updates.full_name_encrypted;
-      if (updates.email_encrypted) updateData.email_encrypted = updates.email_encrypted;
-      if (updates.phone_encrypted !== undefined) updateData.phone_encrypted = updates.phone_encrypted || null;
-      if (updates.relationship_encrypted !== undefined) updateData.relationship_encrypted = updates.relationship_encrypted || null;
-      if (updates.access_level) updateData.access_level = updates.access_level;
-      if (updates.inheritance_plan_id !== undefined) updateData.inheritance_plan_id = updates.inheritance_plan_id;
-      if (updates.notify_on_activation !== undefined) updateData.notify_on_activation = updates.notify_on_activation;
-      if (updates.notification_delay_days !== undefined) updateData.notification_delay_days = updates.notification_delay_days;
-
-      const { data, error } = await supabase
-        .from('heirs')
-        .update(updateData)
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const updatedHeir: HeirDecrypted = {
-        id: data.id,
-        user_id: data.user_id,
-        inheritance_plan_id: data.inheritance_plan_id,
-        full_name: data.full_name_encrypted,
-        email: data.email_encrypted,
-        phone: data.phone_encrypted,
-        relationship: data.relationship_encrypted,
-        access_level: data.access_level,
-        heir_user_id: data.heir_user_id,
-        heir_public_key: data.heir_public_key,
-        notify_on_activation: data.notify_on_activation,
-        notification_delay_days: data.notification_delay_days,
-        is_active: data.is_active,
-        has_accepted: data.has_accepted,
-        accepted_at: data.accepted_at,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-      };
-
-      setHeirs((prev) => prev.map((h) => (h.id === id ? updatedHeir : h)));
-      return updatedHeir;
+      const heir = await acceptHeirInvitation(user.id, invitationCode);
+      
+      // Retirer de la liste des invitations en attente
+      setPendingInvitations((prev) => prev.filter((h) => h.invitation_code !== invitationCode));
+      
+      // Rafraîchir la liste complète
+      await refreshHeirs();
+      
+      return heir;
     } catch (error) {
-      console.error('Error updating heir:', error);
+      console.error('Error accepting invitation:', error);
+      throw error;
+    }
+  };
+
+  const rejectInvitation = async (invitationCode: string): Promise<void> => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      await rejectHeirInvitation(user.id, invitationCode);
+      
+      // Retirer de la liste des invitations en attente
+      setPendingInvitations((prev) => prev.filter((h) => h.invitation_code !== invitationCode));
+    } catch (error) {
+      console.error('Error rejecting invitation:', error);
+      throw error;
+    }
+  };
+
+  const cancelInvitation = async (heirId: string): Promise<void> => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      await cancelHeirInvitation(user.id, heirId);
+      
+      // Retirer de la liste
+      setHeirs((prev) => prev.filter((h) => h.id !== heirId));
+    } catch (error) {
+      console.error('Error canceling invitation:', error);
       throw error;
     }
   };
@@ -198,26 +161,38 @@ export function HeirProvider({ children }: { children: ReactNode }) {
     if (!user) throw new Error('User not authenticated');
 
     try {
-      const { error } = await supabase
+      console.log('🗑️ Attempting to delete heir:', { id, userId: user.id });
+      
+      const { data, error } = await supabase
         .from('heirs')
         .delete()
         .eq('id', id)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .select();
 
-      if (error) throw error;
+      console.log('Delete result:', { data, error });
 
+      if (error) {
+        console.error('❌ Delete error:', error);
+        throw error;
+      }
+
+      console.log('✅ Heir deleted successfully');
       setHeirs((prev) => prev.filter((h) => h.id !== id));
     } catch (error) {
-      console.error('Error deleting heir:', error);
+      console.error('❌ Error deleting heir:', error);
       throw error;
     }
   };
 
   const value = {
     heirs,
+    pendingInvitations,
     loading,
-    createHeir,
-    updateHeir,
+    createInvitation,
+    acceptInvitation,
+    rejectInvitation,
+    cancelInvitation,
     deleteHeir,
     refreshHeirs,
   };
@@ -225,10 +200,10 @@ export function HeirProvider({ children }: { children: ReactNode }) {
   return <HeirContext.Provider value={value}>{children}</HeirContext.Provider>;
 }
 
-export const useHeirs = () => {
+export function useHeirs() {
   const context = useContext(HeirContext);
   if (context === undefined) {
     throw new Error('useHeirs must be used within a HeirProvider');
   }
   return context;
-};
+}

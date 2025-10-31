@@ -53,15 +53,22 @@ const VaultCard: React.FC<VaultCardProps> = ({ vault, onPress, isSelected = fals
         />
       </View>
       <View style={styles.content}>
-        <Text 
-          style={[
-            styles.title, 
-            { color: colors.text }
-          ]}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text 
+            style={[
+              styles.title, 
+              { color: colors.text }
+            ]}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+          {vault.isEncrypted && (
+            <View style={[styles.encryptedBadge, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+              <MaterialCommunityIcons name="lock" size={12} color="#10B981" />
+            </View>
+          )}
+        </View>
         <View style={styles.metaRow}>
           <MaterialCommunityIcons name="file-document" size={14} color={colors.textSecondary} />
           <Text style={[styles.itemCount, { color: colors.textSecondary }]}>
@@ -98,10 +105,23 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
   title: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 6,
+    flex: 1,
+  },
+  encryptedBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   metaRow: {
     flexDirection: 'row',

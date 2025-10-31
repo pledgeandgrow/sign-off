@@ -1,0 +1,342 @@
+/**
+ * In-App Purchase Service
+ * Handles subscriptions via Google Play Store and Apple App Store
+ * 
+ * SETUP REQUIRED:
+ * 1. Install: expo install expo-in-app-purchases
+ * 2. Configure products in Google Play Console and App Store Connect
+ * 3. Set up server-side receipt validation
+ */
+
+import * as InAppPurchases from 'expo-in-app-purchases';
+import { Platform } from 'react-native';
+import { supabase } from '@/lib/supabase';
+
+// Product IDs (must match store configurations)
+export const PRODUCT_IDS = {
+  PREMIUM_MONTHLY: Platform.select({
+    ios: 'com.signoff.premium.monthly',
+    android: 'premium_monthly',
+  }) as string,
+  PREMIUM_YEARLY: Platform.select({
+    ios: 'com.signoff.premium.yearly',
+    android: 'premium_yearly',
+  }) as string,
+};
+
+export interface PurchaseProduct {
+  productId: string;
+  title: string;
+  description: string;
+  price: string;
+  priceAmountMicros: number;
+  priceCurrencyCode: string;
+  type: 'subscription' | 'consumable';
+}
+
+export interface PurchaseResult {
+  success: boolean;
+  transactionId?: string;
+  productId?: string;
+  error?: string;
+}
+
+/**
+ * Initialize in-app purchases
+ */
+export async function initializeIAP(): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('🛒 Initializing In-App Purchases...');
+    
+    const isConnected = await InAppPurchases.connectAsync();
+    
+    if (!isConnected) {
+      return { success: false, error: 'Failed to connect to store' };
+    }
+    
+    console.log('✅ IAP initialized successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('❌ IAP initialization error:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    };
+  }
+}
+
+/**
+ * Disconnect from in-app purchases
+ */
+export async function disconnectIAP(): Promise<void> {
+  try {
+    await InAppPurchases.disconnectAsync();
+    console.log('IAP disconnected');
+  } catch (error) {
+    console.error('Error disconnecting IAP:', error);
+  }
+}
+
+/**
+ * Get available products
+ */
+export async function getProducts(): Promise<PurchaseProduct[]> {
+  try {
+    console.log('📦 Fetching products...');
+    
+    const productIds = Object.values(PRODUCT_IDS).filter(Boolean);
+    
+    const { results, responseCode } = await InAppPurchases.getProductsAsync(productIds);
+    
+    if (responseCode !== InAppPurchases.IAPResponseCode.OK) {
+      console.error('Failed to fetch products:', responseCode);
+      return [];
+    }
+    
+    console.log(`✅ Found ${results.length} products`);
+    
+    return results.map(product => ({
+      productId: product.productId,
+      title: product.title,
+      description: product.description,
+      price: product.price,
+      priceAmountMicros: product.priceAmountMicros,
+      priceCurrencyCode: product.priceCurrencyCode,
+      type: product.type as 'subscription' | 'consumable',
+    }));
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    return [];
+  }
+}
+
+/**
+ * Purchase a product
+ */
+export async function purchaseProduct(productId: string): Promise<PurchaseResult> {
+  try {
+    console.log('💳 Initiating purchase for:', productId);
+    
+    const { responseCode, results } = await InAppPurchases.purchaseItemAsync(productId);
+    
+    if (responseCode === InAppPurchases.IAPResponseCode.OK) {
+      const purchase = results?.[0];
+      
+      if (purchase) {
+        console.log('✅ Purchase successful:', purchase.transactionId);
+        
+        return {
+          success: true,
+          transactionId: purchase.transactionId,
+          productId: purchase.productId,
+        };
+      }
+    } else if (responseCode === InAppPurchases.IAPResponseCode.USER_CANCELED) {
+      console.log('ℹ️ User canceled purchase');
+      return { success: false, error: 'User canceled' };
+    } else {
+      console.error('Purchase failed with code:', responseCode);
+      return { success: false, error: `Purchase failed: ${responseCode}` };
+    }
+    
+    return { success: false, error: 'Unknown error' };
+  } catch (error) {
+    console.error('Purchase error:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    };
+  }
+}
+
+/**
+ * Restore purchases (for iOS)
+ */
+export async function restorePurchases(): Promise<{
+  success: boolean;
+  purchases: any[];
+  error?: string;
+}> {
+  try {
+    console.log('🔄 Restoring purchases...');
+    
+    const { responseCode, results } = await InAppPurchases.getPurchaseHistoryAsync();
+    
+    if (responseCode === InAppPurchases.IAPResponseCode.OK) {
+      console.log(`✅ Found ${results?.length || 0} previous purchases`);
+      return { success: true, purchases: results || [] };
+    }
+    
+    return { success: false, purchases: [], error: `Restore failed: ${responseCode}` };
+  } catch (error) {
+    console.error('Restore error:', error);
+    return { 
+      success: false, 
+      purchases: [], 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    };
+  }
+}
+
+/**
+ * Verify purchase receipt with backend
+ */
+export async function verifyPurchase(
+  userId: string,
+  transactionId: string,
+  productId: string,
+  receiptData: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('🔐 Verifying purchase with backend...');
+    
+    // Call Supabase Edge Function to verify receipt
+    const { data, error } = await supabase.functions.invoke('verify-iap-receipt', {
+      body: {
+        userId,
+        transactionId,
+        productId,
+        receiptData,
+        platform: Platform.OS,
+      },
+    });
+    
+    if (error) {
+      console.error('Verification error:', error);
+      return { success: false, error: error.message };
+    }
+    
+    if (data?.valid) {
+      console.log('✅ Purchase verified successfully');
+      return { success: true };
+    }
+    
+    return { success: false, error: 'Invalid receipt' };
+  } catch (error) {
+    console.error('Verification exception:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    };
+  }
+}
+
+/**
+ * Complete purchase flow
+ * 1. Purchase product
+ * 2. Verify receipt
+ * 3. Activate subscription
+ */
+export async function completePurchaseFlow(
+  userId: string,
+  productId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Step 1: Purchase
+    const purchaseResult = await purchaseProduct(productId);
+    
+    if (!purchaseResult.success) {
+      return { success: false, error: purchaseResult.error };
+    }
+    
+    // Step 2: Get receipt data
+    const { results } = await InAppPurchases.getPurchaseHistoryAsync();
+    const purchase = results?.find(p => p.transactionId === purchaseResult.transactionId);
+    
+    if (!purchase) {
+      return { success: false, error: 'Purchase not found' };
+    }
+    
+    // Step 3: Verify with backend
+    const verifyResult = await verifyPurchase(
+      userId,
+      purchase.transactionId,
+      purchase.productId,
+      Platform.OS === 'ios' ? purchase.transactionReceipt : purchase.purchaseToken
+    );
+    
+    if (!verifyResult.success) {
+      return { success: false, error: verifyResult.error };
+    }
+    
+    // Step 4: Finish transaction
+    await InAppPurchases.finishTransactionAsync(purchase, true);
+    
+    console.log('🎉 Purchase flow completed successfully');
+    return { success: true };
+  } catch (error) {
+    console.error('Purchase flow error:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    };
+  }
+}
+
+/**
+ * Check subscription status
+ */
+export async function checkSubscriptionStatus(userId: string): Promise<{
+  isActive: boolean;
+  expiresAt?: Date;
+  productId?: string;
+}> {
+  try {
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (error || !data) {
+      return { isActive: false };
+    }
+    
+    const expiresAt = data.current_period_end ? new Date(data.current_period_end) : undefined;
+    const isActive = expiresAt ? expiresAt > new Date() : false;
+    
+    return {
+      isActive,
+      expiresAt,
+      productId: data.store_product_id,
+    };
+  } catch (error) {
+    console.error('Error checking subscription:', error);
+    return { isActive: false };
+  }
+}
+
+/**
+ * Cancel subscription
+ * Note: Actual cancellation happens in the store (Google Play/App Store)
+ * This just updates our database
+ */
+export async function cancelSubscription(userId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId)
+      .eq('status', 'active');
+    
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    
+    return { success: true };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    };
+  }
+}

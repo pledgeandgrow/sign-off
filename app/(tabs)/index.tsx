@@ -33,6 +33,7 @@ const QUICK_ACTIONS = [
     description: 'Stockez vos mots de passe et documents',
     icon: 'lock-plus',
     route: '/vaults',
+    action: 'create-vault',
     color: Colors.dark.purple.primary,
   },
   {
@@ -59,6 +60,7 @@ export default function HomeScreen() {
   const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
   const [isPremium, setIsPremium] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string>('free');
+  const [currentTipIndex, setCurrentTipIndex] = useState(0);
   const colorScheme = useColorScheme();
   const router = useRouter();
   const colors = Colors[colorScheme ?? 'dark'];
@@ -70,6 +72,25 @@ export default function HomeScreen() {
   const vaultsCount = vaults.length;
   const heirsCount = heirs.length;
   const totalItems = vaults.reduce((sum, vault) => sum + (vault.items?.length || 0), 0);
+  
+  // Calculate security stats
+  const securedVaults = vaults.filter(v => v.isEncrypted).length;
+  const securityPercentage = vaultsCount > 0 ? Math.round((securedVaults / vaultsCount) * 100) : 0;
+  
+  // Get recent items (last 3)
+  const recentItems = vaults
+    .flatMap(v => (v.items || []).map(item => ({ ...item, vaultName: v.name })))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 3);
+  
+  // Security tips
+  const securityTips = [
+    { icon: 'shield-lock', text: 'Activez le chiffrement sur vos coffres sensibles', color: '#10B981' },
+    { icon: 'key-variant', text: 'Utilisez des mots de passe forts et uniques', color: '#F59E0B' },
+    { icon: 'account-group', text: 'Configurez au moins un héritier de confiance', color: '#8B5CF6' },
+    { icon: 'update', text: 'Mettez à jour régulièrement vos informations', color: '#3B82F6' },
+    { icon: 'two-factor-authentication', text: 'Activez l\'authentification à deux facteurs', color: '#EF4444' },
+  ];
 
   // Fetch data
   useEffect(() => {
@@ -107,19 +128,8 @@ export default function HomeScreen() {
       return;
     }
 
-    try {
-      const paymentUrl = `${SQUARE_CONFIG.PAYMENT_LINK}?user_id=${user.id}`;
-      const canOpen = await Linking.canOpenURL(paymentUrl);
-      
-      if (canOpen) {
-        await Linking.openURL(paymentUrl);
-      } else {
-        Alert.alert('Erreur', 'Impossible d\'ouvrir le lien de paiement');
-      }
-    } catch (error) {
-      console.error('Error opening payment link:', error);
-      Alert.alert('Erreur', 'Échec de l\'ouverture de la page de paiement');
-    }
+    // Redirect to upgrade screen with in-app purchases
+    router.push('/upgrade');
   };
 
   const loadInheritancePlans = async () => {
@@ -148,39 +158,65 @@ export default function HomeScreen() {
     setTimeout(() => setRefreshing(false), 1000);
   }, [user]);
 
+  // Rotate security tips
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTipIndex((prev) => (prev + 1) % securityTips.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Real stats data
   const STATS_DATA = [
-    { label: 'Coffres-forts', value: vaultsCount.toString(), icon: 'lock' },
-    { label: 'Héritiers', value: heirsCount.toString(), icon: 'account-group' },
-    { label: 'Plans d\'héritage', value: inheritancePlansCount.toString(), icon: 'file-document-multiple' },
+    { label: 'Coffres-forts', value: vaultsCount.toString(), icon: 'lock', color: colors.purple.primary },
+    { label: 'Éléments', value: totalItems.toString(), icon: 'folder-multiple', color: '#3B82F6' },
+    { label: 'Héritiers', value: heirsCount.toString(), icon: 'account-group', color: '#10B981' },
+    { label: 'Coffres protégés', value: `${securityPercentage}%`, icon: 'shield-check', color: securityPercentage >= 50 ? '#10B981' : '#F59E0B' },
   ];
 
-  const QuickActionCard = ({ item }: { item: typeof QUICK_ACTIONS[0] }) => (
-    <TouchableOpacity
-      style={styles.quickActionCard}
-      onPress={() => router.push(item.route as any)}
-      activeOpacity={0.8}
-    >
-      <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
-        <MaterialCommunityIcons name={item.icon as any} size={24} color={item.color} />
-      </View>
-      <View style={styles.quickActionContent}>
-        <Text style={styles.quickActionTitle}>{item.title}</Text>
-        <Text style={styles.quickActionDescription}>{item.description}</Text>
-      </View>
-      <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
-    </TouchableOpacity>
-  );
+  const QuickActionCard = ({ item }: { item: typeof QUICK_ACTIONS[0] }) => {
+    const handlePress = () => {
+      if (item.action === 'create-vault') {
+        router.push({ pathname: item.route as any, params: { openCreate: 'true' } });
+      } else {
+        router.push(item.route as any);
+      }
+    };
+
+    return (
+      <TouchableOpacity
+        style={styles.quickActionCard}
+        onPress={handlePress}
+        activeOpacity={0.8}
+      >
+        <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
+          <MaterialCommunityIcons name={item.icon as any} size={24} color={item.color} />
+        </View>
+        <View style={styles.quickActionContent}>
+          <Text style={styles.quickActionTitle}>{item.title}</Text>
+          <Text style={styles.quickActionDescription}>{item.description}</Text>
+        </View>
+        <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
+      </TouchableOpacity>
+    );
+  };
 
   const StatCard = ({ stat }: { stat: typeof STATS_DATA[0] }) => (
     <View style={styles.statCard}>
-      <View style={styles.statIconContainer}>
-        <MaterialCommunityIcons name={stat.icon as any} size={20} color={colors.purple.primary} />
+      <View style={[styles.statIconContainer, { backgroundColor: stat.color + '20' }]}>
+        <MaterialCommunityIcons name={stat.icon as any} size={20} color={stat.color} />
       </View>
       <Text style={styles.statValue}>{stat.value}</Text>
       <Text style={styles.statLabel}>{stat.label}</Text>
     </View>
   );
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Bonjour';
+    if (hour < 18) return 'Bon après-midi';
+    return 'Bonsoir';
+  };
 
   const ActivityItem = ({ activity }: { activity: Activity }) => (
     <View style={styles.activityItem}>
@@ -214,6 +250,38 @@ export default function HomeScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
+        {/* Welcome Header */}
+        <View style={styles.welcomeHeader}>
+          <View>
+            <Text style={[styles.greetingText, { color: colors.textSecondary }]}>
+              {getGreeting()}
+            </Text>
+            <Text style={[styles.userName, { color: colors.text }]}>
+              {user?.email?.split('@')[0] || 'Utilisateur'}
+            </Text>
+          </View>
+          <TouchableOpacity 
+            style={[styles.notificationButton, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}
+            onPress={() => router.push('/profile')}
+          >
+            <MaterialCommunityIcons name="bell-outline" size={24} color={colors.purple.primary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Security Tip Banner */}
+        <View style={styles.tipBanner}>
+          <View style={[styles.tipIconContainer, { backgroundColor: securityTips[currentTipIndex].color + '20' }]}>
+            <MaterialCommunityIcons 
+              name={securityTips[currentTipIndex].icon as any} 
+              size={24} 
+              color={securityTips[currentTipIndex].color} 
+            />
+          </View>
+          <Text style={[styles.tipText, { color: colors.text }]}>
+            {securityTips[currentTipIndex].text}
+          </Text>
+        </View>
+
         {/* Stats Overview */}
         <View style={styles.statsContainer}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -225,6 +293,42 @@ export default function HomeScreen() {
             ))}
           </View>
         </View>
+
+        {/* Recent Items */}
+        {recentItems.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Éléments récents
+              </Text>
+              <TouchableOpacity onPress={() => router.push('/vaults')}>
+                <Text style={[styles.seeAllText, { color: colors.purple.primary }]}>Tout voir</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.recentItemsContainer}>
+              {recentItems.map((item) => (
+                <View key={item.id} style={styles.recentItem}>
+                  <View style={[styles.recentItemIcon, { backgroundColor: colors.purple.primary + '20' }]}>
+                    <MaterialCommunityIcons 
+                      name={item.type === 'password' ? 'key-variant' : item.type === 'document' ? 'file-document' : item.type === 'image' ? 'image' : item.type === 'video' ? 'video' : 'note-text'} 
+                      size={20} 
+                      color={colors.purple.primary} 
+                    />
+                  </View>
+                  <View style={styles.recentItemContent}>
+                    <Text style={[styles.recentItemTitle, { color: colors.text }]} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Text style={[styles.recentItemSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {item.vaultName}
+                    </Text>
+                  </View>
+                  <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Quick Actions */}
         <View style={styles.section}>
@@ -418,40 +522,121 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  statsGrid: {
+  welcomeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 16,
+  },
+  greetingText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  notificationButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tipBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  tipIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  tipText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   statCard: {
-    flex: 1,
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    width: (width - 56) / 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    marginHorizontal: 4,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   statIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
     color: '#9CA3AF',
     textAlign: 'center',
+  },
+  recentItemsContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  recentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  recentItemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  recentItemContent: {
+    flex: 1,
+  },
+  recentItemTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  recentItemSubtitle: {
+    fontSize: 13,
   },
   quickActionCard: {
     flexDirection: 'row',
